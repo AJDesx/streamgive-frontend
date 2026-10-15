@@ -112,6 +112,75 @@ describe('DashboardPage', () => {
     });
   });
 
+  describe('load more', () => {
+    // Cancelled so StreamControls (which needs a ToastProvider/contract
+    // client this test file doesn't set up) never renders. 25 streams is
+    // two full pages (PAGE_SIZE 10) plus a partial third.
+    const manyStreams = Array.from({ length: 25 }, (_, i) =>
+      makeStream({ id: `s${i + 1}`, onChainId: String(i + 1), status: 'CANCELLED' }),
+    );
+
+    function setup() {
+      vi.spyOn(WalletProviderMod, 'useWallet').mockReturnValue({
+        address: 'G123',
+        connecting: false,
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+        signTransaction: vi.fn(),
+        signMessage: vi.fn(),
+      });
+      vi.spyOn(ApiMod, 'getStreams').mockResolvedValue(manyStreams);
+      render(<DashboardPage />);
+    }
+
+    const rows = () => screen.getAllByRole('button', { name: 'View details' });
+
+    it('shows one page at a time and hides "Load more" once everything is visible', async () => {
+      const user = userEvent.setup();
+      setup();
+
+      await waitFor(() => expect(rows()).toHaveLength(10));
+
+      await user.click(screen.getByRole('button', { name: 'Load more' }));
+      expect(rows()).toHaveLength(20);
+
+      await user.click(screen.getByRole('button', { name: 'Load more' }));
+      expect(rows()).toHaveLength(25);
+      expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
+    });
+
+    it('derives "Load more" from the filtered list, not the full one', async () => {
+      const user = userEvent.setup();
+      setup();
+      await waitFor(() => expect(rows()).toHaveLength(10));
+
+      // IDs containing "2": 2, 12, 20-25 = 8 matches, under one page, even
+      // though 25 streams exist in total.
+      await user.type(screen.getByPlaceholderText('Search by stream ID…'), '2');
+
+      expect(rows()).toHaveLength(8);
+      expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
+    });
+
+    it('goes back to the first page when the filter or search changes', async () => {
+      const user = userEvent.setup();
+      setup();
+      await waitFor(() => expect(rows()).toHaveLength(10));
+
+      await user.click(screen.getByRole('button', { name: 'Load more' }));
+      expect(rows()).toHaveLength(20);
+      await user.click(screen.getByRole('button', { name: 'Cancelled' }));
+      expect(rows()).toHaveLength(10);
+
+      await user.click(screen.getByRole('button', { name: 'Load more' }));
+      expect(rows()).toHaveLength(20);
+      // "1" matches 1, 10-19, 21 = 12 streams: more than one page.
+      await user.type(screen.getByPlaceholderText('Search by stream ID…'), '1');
+      expect(rows()).toHaveLength(10);
+      expect(screen.getByRole('button', { name: 'Load more' })).toBeInTheDocument();
+    });
+  });
+
   describe('background polling', () => {
     function mockConnectedWallet() {
       vi.spyOn(WalletProviderMod, 'useWallet').mockReturnValue({

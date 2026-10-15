@@ -200,9 +200,6 @@ export default function DashboardPage() {
     0n,
   );
   const activeCount = streams.filter((s) => s.status === 'ACTIVE').length;
-  const visibleStreams = streams.slice(0, visibleCount);
-  const hasMore = visibleCount < streams.length;
-
   const trimmedSearchQuery = searchQuery.trim();
   const filteredStreams = streams.filter((s) => {
     if (filter === 'ACTIVE' && s.status !== 'ACTIVE') return false;
@@ -212,6 +209,20 @@ export default function DashboardPage() {
     if (trimmedSearchQuery && !s.onChainId.includes(trimmedSearchQuery)) return false;
     return true;
   });
+  const visibleStreams = filteredStreams.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredStreams.length;
+
+  // A new filter or search is a new list, so it starts back at the first
+  // page rather than inheriting however far "Load more" had gone.
+  function handleFilterChange(next: 'ALL' | 'ACTIVE' | 'CANCELLED'): void {
+    setFilter(next);
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function handleSearchChange(value: string): void {
+    setSearchQuery(value);
+    setVisibleCount(PAGE_SIZE);
+  }
 
   return (
     <>
@@ -285,21 +296,21 @@ export default function DashboardPage() {
             <div className="mt-8 flex gap-4 border-b border-gray-200 dark:border-gray-800">
               <button
                 type="button"
-                onClick={() => setFilter('ALL')}
+                onClick={() => handleFilterChange('ALL')}
                 className={`pb-2 text-sm font-medium ${filter === 'ALL' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
               >
                 All
               </button>
               <button
                 type="button"
-                onClick={() => setFilter('ACTIVE')}
+                onClick={() => handleFilterChange('ACTIVE')}
                 className={`pb-2 text-sm font-medium ${filter === 'ACTIVE' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
               >
                 Active
               </button>
               <button
                 type="button"
-                onClick={() => setFilter('CANCELLED')}
+                onClick={() => handleFilterChange('CANCELLED')}
                 className={`pb-2 text-sm font-medium ${filter === 'CANCELLED' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
               >
                 Cancelled
@@ -311,7 +322,7 @@ export default function DashboardPage() {
               <input
                 type="search"
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                onChange={(event) => handleSearchChange(event.target.value)}
                 placeholder="Search by stream ID…"
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900"
               />
@@ -325,7 +336,7 @@ export default function DashboardPage() {
               </p>
             ) : (
               <ul className="mt-6 space-y-4">
-                {filteredStreams.map((stream) => (
+                {visibleStreams.map((stream) => (
                   <li
                     key={stream.id}
                     className="rounded-lg border border-gray-200 p-6 dark:border-gray-800"
