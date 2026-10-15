@@ -141,8 +141,6 @@ export default function NgoAdminPage() {
               </div>
             </dl>
 
-            <EmbedSnippet ngoId={ngo.id} />
-
             <NgoAdminStreamList
               streams={streams}
               onWithdrawn={() => void refresh()}
