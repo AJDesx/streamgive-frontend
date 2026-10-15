@@ -138,52 +138,7 @@ export function NgoExplorer({ ngos }: { ngos: NgoProfile[] }) {
       ) : (
         <ul className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {visibleNgos.map((ngo) => (
-            <li
-              key={ngo.id}
-              className="rounded-lg border border-gray-200 p-6 dark:border-gray-800"
-            >
-              <div className="flex items-center gap-2">
-                <h2 className="font-semibold">{ngo.name}</h2>
-                {ngo.verified && (
-                  <span
-                    role="img"
-                    aria-label="Verified"
-                    title="Verified"
-                    className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-green-600 text-white dark:bg-green-500"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      className="h-2.5 w-2.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={3}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M5 13l4 4L19 7" />
-                    </svg>
-                  </span>
-                )}
-              </div>
-
-              <dl className="mt-4 grid grid-cols-3 gap-3">
-                <div>
-                  <dt className="text-xs text-gray-500 dark:text-gray-400">Committed</dt>
-                  <dd className="text-sm font-semibold">
-                    {formatAmount(ngo.stats.totalCommitted)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500 dark:text-gray-400">Streams</dt>
-                  <dd className="text-sm font-semibold">{ngo.stats.activeStreamCount}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500 dark:text-gray-400">Donors</dt>
-                  <dd className="text-sm font-semibold">{ngo.stats.donorCount}</dd>
-                </div>
-              </dl>
-
+            <li key={ngo.id}>
               <Link
                 href={`/ngos/${ngo.id}`}
                 className="block rounded-lg border border-gray-200 p-6 hover:bg-gray-50 focus-visible:border-gray-400 focus-visible:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 dark:border-gray-800 dark:hover:bg-gray-900 dark:focus-visible:border-gray-600 dark:focus-visible:bg-gray-900 dark:focus-visible:ring-white"

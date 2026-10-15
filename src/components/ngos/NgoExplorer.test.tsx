@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { NgoExplorer } from './NgoExplorer';
@@ -124,5 +124,24 @@ describe('NgoExplorer', () => {
 
     expect(screen.getByText('No NGOs match "Nonexistent Org".')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
+  });
+
+  it('renders a single card per NGO: one heading, one badge, one stats block and one link', () => {
+    const ngos = [
+      makeNgo({ id: 'a', name: 'Alpha', verified: true }),
+      makeNgo({ id: 'b', name: 'Beta', verified: true }),
+    ];
+    render(<NgoExplorer ngos={ngos} />);
+
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+
+    for (const item of items) {
+      const card = within(item);
+      expect(card.getAllByRole('heading')).toHaveLength(1);
+      expect(card.getAllByText('Verified')).toHaveLength(1);
+      expect(card.getAllByText('Committed')).toHaveLength(1);
+      expect(card.getAllByRole('link')).toHaveLength(1);
+    }
   });
 });
