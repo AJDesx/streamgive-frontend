@@ -40,21 +40,15 @@ test.describe('core donor flow (no wallet extension required)', () => {
   });
 
   test('unknown NGO id renders the custom 404 page', async ({ page }) => {
-    // Same ambiguity as the donate-page test below: without a backend to
-    // confirm the id doesn't exist, the page shows an API-unreachable
-    // message instead of 404ing — both are correctly-handled outcomes.
+    // Needs the backend running: it has to answer 404 for this id. With no
+    // backend the page shows the API-unreachable message instead, which is
+    // not what this test is about.
     await page.goto('/ngos/00000000-0000-0000-0000-000000000000');
 
-    const notFoundVisible = await page
-      .getByRole('heading', { name: /page not found/i })
-      .isVisible()
-      .catch(() => false);
-    if (notFoundVisible) {
-      await expect(page.getByRole('link', { name: /go home/i })).toBeVisible();
-      await expect(page.getByRole('link', { name: /explore ngos/i }).first()).toBeVisible();
-    } else {
-      await expect(page.getByText(/couldn.t reach the streamgive api/i)).toBeVisible();
-    }
+    await expect(page.getByRole('heading', { name: /page not found/i })).toBeVisible();
+    await expect(page.getByText(/couldn.t reach the streamgive api/i)).not.toBeVisible();
+    await expect(page.getByRole('link', { name: /go home/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /explore ngos/i }).first()).toBeVisible();
   });
 
   test('donate page prompts wallet connection when nothing is connected', async ({ page }) => {

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { CreateStreamForm } from '@/components/donate/CreateStreamForm';
-import { getNgo } from '@/lib/api';
+import { getNgo, type NgoProfile } from '@/lib/api';
 
 type Props = { params: Promise<{ ngoId: string }> };
 
@@ -22,15 +22,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function EmbedDonatePage({ params }: Props) {
   const { ngoId } = await params;
 
-  let ngoName: string;
-  let ngoAddress: string;
+  let ngo: NgoProfile | null;
   try {
-    const ngo = await getNgo(ngoId);
-    if (!ngo) {
-      notFound();
-    }
-    ngoName = ngo.name;
-    ngoAddress = ngo.ownerAddress;
+    ngo = await getNgo(ngoId);
   } catch {
     return (
       <div className="p-6 text-center text-sm text-red-600 dark:text-red-400">
@@ -38,6 +32,15 @@ export default async function EmbedDonatePage({ params }: Props) {
       </div>
     );
   }
+
+  // notFound() works by throwing, so it has to stay outside the try/catch
+  // above or the catch would swallow it and show the API error instead.
+  if (!ngo) {
+    notFound();
+  }
+
+  const ngoName = ngo.name;
+  const ngoAddress = ngo.ownerAddress;
 
   return (
     <div className="mx-auto max-w-sm p-6">

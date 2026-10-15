@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { CreateStreamForm } from '@/components/donate/CreateStreamForm';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
-import { getNgo } from '@/lib/api';
+import { getNgo, type NgoProfile } from '@/lib/api';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -17,17 +17,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function DonatePage({ params }: Props) {
   const { id } = await params;
 
-  let ngoName: string;
-  let ngoAddress: string;
+  let ngo: NgoProfile | null;
   try {
-    const ngo = await getNgo(id);
-    if (!ngo) {
-      notFound();
-    }
-    ngoName = ngo.name;
-    // The on-chain call needs the NGO's Stellar address, not its internal
-    // database id — `id` above is only a route/lookup key into our API.
-    ngoAddress = ngo.ownerAddress;
+    ngo = await getNgo(id);
   } catch {
     return (
       <>
@@ -41,6 +33,17 @@ export default async function DonatePage({ params }: Props) {
       </>
     );
   }
+
+  // notFound() works by throwing, so it has to stay outside the try/catch
+  // above or the catch would swallow it and show the API error instead.
+  if (!ngo) {
+    notFound();
+  }
+
+  const ngoName = ngo.name;
+  // The on-chain call needs the NGO's Stellar address, not its internal
+  // database id — `id` above is only a route/lookup key into our API.
+  const ngoAddress = ngo.ownerAddress;
 
   return (
     <>
