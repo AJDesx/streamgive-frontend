@@ -16,6 +16,17 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
+/** Only http(s) URLs are rendered as links, so a stored `javascript:` or
+ * other scheme can never become a clickable href. */
+function safeWebsiteUrl(website: string): string | null {
+  try {
+    const url = new URL(website);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 type Props = { params: Promise<{ id: string }> };
 
 // Next.js dedupes identical fetch() calls made during the same request, so
@@ -58,6 +69,8 @@ export default async function NgoProfilePage({ params }: Props) {
     notFound();
   }
 
+  const websiteUrl = ngo.website ? safeWebsiteUrl(ngo.website) : null;
+
   // The API has no "most recent first" ordering guarantee, so that's
   // enforced here rather than trusting response order.
   const streams = await getStreams({ ngo: ngo.id }).catch((): Stream[] => []);
@@ -87,6 +100,30 @@ export default async function NgoProfilePage({ params }: Props) {
         >
           {ngo.ownerAddress}
         </a>
+
+        {ngo.description && (
+          <p className="mt-6 max-w-2xl whitespace-pre-line text-gray-700 dark:text-gray-300">
+            {ngo.description}
+          </p>
+        )}
+
+        {(websiteUrl || ngo.country) && (
+          <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
+            {websiteUrl && (
+              <li>
+                <a
+                  href={websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  {websiteUrl}
+                </a>
+              </li>
+            )}
+            {ngo.country && <li>{ngo.country}</li>}
+          </ul>
+        )}
 
         <dl className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-4">
           <div>

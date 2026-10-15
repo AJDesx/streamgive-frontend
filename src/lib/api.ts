@@ -50,6 +50,12 @@ export async function getNgos(signal?: AbortSignal): Promise<Ngo[]> {
 }
 
 export type NgoProfile = Ngo & {
+  // From the NGO's approved application. Optional because older records and
+  // list responses may not carry them, and website/country were never
+  // required on the application form.
+  description?: string | null;
+  website?: string | null;
+  country?: string | null;
   stats: {
     totalCommitted: string;
     totalWithdrawn: string;
