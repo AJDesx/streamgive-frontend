@@ -1,11 +1,17 @@
 'use client';
 
-import { useState, useRef, type FormEvent } from 'react';
+import { useEffect, useState, useRef, type FormEvent } from 'react';
 
+import { ApplicationStatusPanel } from '@/components/apply/ApplicationStatusPanel';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
 import { useWallet } from '@/components/wallet/WalletProvider';
-import { ApiError, submitNgoApplication } from '@/lib/api';
+import {
+  ApiError,
+  getApplicationStatus,
+  submitNgoApplication,
+  type NgoApplicationStatus,
+} from '@/lib/api';
 import { NGO_REGISTRY_ERRORS } from '@/lib/contractTypes';
 import { formatEstimatedFee } from '@/lib/format';
 import { useNgoRegistryClient } from '@/lib/ngoRegistryClient';
@@ -38,6 +44,35 @@ export default function ApplyPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const isSubmittingRef = useRef(false);
   const [estimatedFee, setEstimatedFee] = useState<string | null>(null);
+  // Keyed by the address it was fetched for, so a result for a previous
+  // wallet is never shown after switching to another one.
+  const [fetchedApplication, setFetchedApplication] = useState<{
+    address: string;
+    application: NgoApplicationStatus | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!address) return;
+
+    let cancelled = false;
+    getApplicationStatus(address)
+      .then((application) => {
+        if (!cancelled) setFetchedApplication({ address, application });
+      })
+      // The status panel is a convenience — if the lookup fails, the form
+      // stays available as before.
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [address]);
+
+  const application =
+    fetchedApplication?.address === address ? fetchedApplication.application : null;
+  // A pending or approved applicant has nothing left to submit; a rejected
+  // one may be able to re-apply, so the form stays below their result.
+  const showForm = !application || application.status === 'REJECTED';
 
   const canSubmit =
     !!address &&
@@ -144,6 +179,9 @@ export default function ApplyPage() {
             </button>
           </div>
         ) : (
+          <>
+            {application && <ApplicationStatusPanel application={application} />}
+            {showForm && (
           <form onSubmit={(event) => void handleSubmit(event)} className="mt-8 max-w-md space-y-6">
             <label className="block">
               <span className="text-sm font-medium">Organization name</span>
@@ -238,6 +276,8 @@ export default function ApplyPage() {
                     : 'Submit application'}
             </button>
           </form>
+            )}
+          </>
         )}
       </main>
       <Footer />

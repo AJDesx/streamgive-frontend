@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ApiError, submitNgoApplication } from '@/lib/api';
+import { ApiError, getApplicationStatus, submitNgoApplication } from '@/lib/api';
 
 const OWNER_ADDRESS = 'G' + 'A'.repeat(55);
 
@@ -16,7 +16,7 @@ vi.mock('@/components/wallet/WalletProvider', () => ({
 
 vi.mock('@/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api')>();
-  return { ...actual, submitNgoApplication: vi.fn() };
+  return { ...actual, submitNgoApplication: vi.fn(), getApplicationStatus: vi.fn() };
 });
 
 vi.mock('@/lib/ngoRegistryClient', () => ({
@@ -30,6 +30,7 @@ import ApplyPage from './page';
 describe('ApplyPage', () => {
   beforeEach(() => {
     vi.mocked(submitNgoApplication).mockReset();
+    vi.mocked(getApplicationStatus).mockReset().mockResolvedValue(null);
   });
 
   it('shows the duplicate-application message for a 409 response', async () => {

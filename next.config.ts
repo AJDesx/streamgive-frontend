@@ -1,6 +1,9 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // Don't advertise the framework/version in an X-Powered-By header.
+  poweredByHeader: false,
+
   // Self-contained server in .next/standalone, so the production Dockerfile
   // can ship a runtime image without the whole node_modules tree.
   //
