@@ -213,6 +213,32 @@ export type NgoApplication = {
   updatedAt: string;
 };
 
+export type NgoApplicationStatus = Pick<NgoApplication, 'status' | 'reviewNote'>;
+
+/**
+ * Looks up the status of the application submitted by `ownerAddress`, via
+ * the backend's public status endpoint.
+ *
+ * @returns The status (and the reviewer's note, if any), or `null` if this
+ * address hasn't applied.
+ * @throws {Error} if the response is not ok and not a 404.
+ */
+export async function getApplicationStatus(
+  ownerAddress: string,
+): Promise<NgoApplicationStatus | null> {
+  const params = new URLSearchParams({ ownerAddress });
+  const res = await fetch(`${API_URL}/ngo-applications/status?${params.toString()}`, {
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
+  });
+  if (res.status === 404) {
+    return null;
+  }
+  if (!res.ok) {
+    throw new Error(`Failed to fetch application status: ${res.status}`);
+  }
+  return res.json();
+}
+
 /**
  * Submits a new NGO application for review.
  *
