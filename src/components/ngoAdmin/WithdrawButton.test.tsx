@@ -27,15 +27,26 @@ vi.mock('@/components/toast/ToastProvider', () => ({
 
 const signAndSend = vi.fn();
 const withdraw = vi.fn(async () => ({ signAndSend }));
+// 25_000_000 base units = 2.5 XLM accrued.
+const pendingAccrual = vi.fn(async () => ({ result: 25_000_000n }));
 
 vi.mock('@/lib/donationVaultClient', () => ({
   useDonationVaultClient: vi.fn(),
 }));
 
+async function startWithdraw(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+  await user.click(await screen.findByRole('button', { name: 'Confirm' }));
+}
+
 describe('WithdrawButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useDonationVaultClient).mockReturnValue({ client: { withdraw } as never, ready: true });
+    pendingAccrual.mockResolvedValue({ result: 25_000_000n });
+    vi.mocked(useDonationVaultClient).mockReturnValue({
+      client: { withdraw, pending_accrual: pendingAccrual } as never,
+      ready: true,
+    });
   });
 
   it('has a visible focus-visible ring', () => {
@@ -56,13 +67,49 @@ describe('WithdrawButton', () => {
     expect(screen.getByRole('button', { name: 'Loading…' })).toBeDisabled();
   });
 
+  it('shows the accrued amount and asks for confirmation before signing', async () => {
+    const user = userEvent.setup();
+
+    render(<WithdrawButton streamOnChainId="1" onWithdrawn={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    expect(pendingAccrual).toHaveBeenCalledWith({ stream_id: 1n });
+    expect(await screen.findByText('Withdraw 2.5 now?')).toBeInTheDocument();
+    expect(withdraw).not.toHaveBeenCalled();
+    expect(signAndSend).not.toHaveBeenCalled();
+  });
+
+  it('does not sign when the confirmation is cancelled', async () => {
+    const user = userEvent.setup();
+
+    render(<WithdrawButton streamOnChainId="1" onWithdrawn={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+    await user.click(await screen.findByRole('button', { name: 'Cancel' }));
+
+    expect(withdraw).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Withdraw' })).toBeInTheDocument();
+  });
+
+  it('shows a friendly message instead of confirming when nothing has accrued', async () => {
+    pendingAccrual.mockResolvedValue({ result: 0n });
+    const user = userEvent.setup();
+
+    render(<WithdrawButton streamOnChainId="1" onWithdrawn={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    expect(await screen.findByText(/nothing to withdraw yet/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument();
+    expect(withdraw).not.toHaveBeenCalled();
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
   it('withdraws and shows a success toast', async () => {
     signAndSend.mockResolvedValue(undefined);
     const onWithdrawn = vi.fn();
     const user = userEvent.setup();
 
     render(<WithdrawButton streamOnChainId="1" onWithdrawn={onWithdrawn} />);
-    await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+    await startWithdraw(user);
 
     expect(withdraw).toHaveBeenCalledWith({ stream_id: 1n });
     expect(signAndSend).toHaveBeenCalled();
@@ -79,7 +126,7 @@ describe('WithdrawButton', () => {
     const user = userEvent.setup();
 
     render(<WithdrawButton streamOnChainId="1" onWithdrawn={onWithdrawn} />);
-    await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+    await startWithdraw(user);
 
     expect(await screen.findByRole('button', { name: 'Withdraw' })).not.toBeDisabled();
     expect(showToast).toHaveBeenCalledWith('error', 'User declined access');
@@ -92,7 +139,7 @@ describe('WithdrawButton', () => {
     const user = userEvent.setup();
 
     render(<WithdrawButton streamOnChainId="1" onWithdrawn={onWithdrawn} />);
-    await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+    await startWithdraw(user);
 
     expect(await screen.findByRole('button', { name: 'Withdraw' })).not.toBeDisabled();
     expect(showToast).toHaveBeenCalledWith('error', 'contract error: Error(Contract, #4)');
@@ -105,7 +152,7 @@ describe('WithdrawButton', () => {
     const user = userEvent.setup();
 
     render(<WithdrawButton streamOnChainId="1" onWithdrawn={vi.fn()} />);
-    await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+    await startWithdraw(user);
 
     expect(await screen.findByRole('button', { name: 'Withdrawing…' })).toBeDisabled();
   });
@@ -118,7 +165,7 @@ describe('WithdrawButton', () => {
     const user = userEvent.setup();
 
     render(<WithdrawButton streamOnChainId="1" onWithdrawn={vi.fn()} />);
-    await user.click(screen.getByRole('button', { name: 'Withdraw' }));
+    await startWithdraw(user);
 
     // 1 000 000 stroops = 0.1 XLM.
     expect(await screen.findByText('Fee ≈ 0.1 XLM')).toBeInTheDocument();

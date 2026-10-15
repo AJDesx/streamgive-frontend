@@ -31,6 +31,10 @@ export type DonationVaultMethods = {
   modify_rate(args: { stream_id: bigint; new_rate: bigint }): Promise<AssembledTransaction<null>>;
 
   withdraw(args: { stream_id: bigint }): Promise<AssembledTransaction<null>>;
+
+  /** Read-only view: the amount `withdraw` would pay out right now. Read
+   * `.result` off the simulated transaction; it never needs signing. */
+  pending_accrual(args: { stream_id: bigint }): Promise<AssembledTransaction<bigint>>;
 };
 
 export type NgoRegistryMethods = {
