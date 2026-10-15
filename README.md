@@ -15,7 +15,9 @@ context/state architecture (`WalletProvider`, `ToastProvider`, the
 signature cache), and
 [docs/CONTRACT_CALLS.md](./docs/CONTRACT_CALLS.md) for a reference mapping
 every Soroban contract method the frontend calls to the UI flow and
-arguments behind it.
+arguments behind it, and
+[docs/THEMING.md](./docs/THEMING.md) for the Tailwind v4 theme tokens and
+the dark-mode strategy.
 
 ## Local development
 
