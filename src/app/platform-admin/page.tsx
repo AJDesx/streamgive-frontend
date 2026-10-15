@@ -15,7 +15,7 @@ import { formatEstimatedFee, truncateAddress } from '@/lib/format';
 import { useNgoRegistryClient } from '@/lib/ngoRegistryClient';
 
 export default function PlatformAdminPage() {
-  const { address, signMessage, signTransaction } = useWallet();
+  const { address, signMessage } = useWallet();
   const { client, ready } = useNgoRegistryClient();
   const { showToast } = useToast();
   const [applications, setApplications] = useState<NgoApplication[]>([]);
@@ -101,10 +101,9 @@ export default function PlatformAdminPage() {
   }
 
   async function handleRevoke(ngo: Ngo): Promise<void> {
-    if (!address) return;
+    if (!address || !client) return;
     setBusyId(ngo.id);
     try {
-      const client = await getNgoRegistryClient(address, signTransaction);
       const tx = await client.revoke_ngo({ ngo_owner: ngo.ownerAddress });
       await tx.signAndSend();
       showToast('success', `${ngo.name} revoked.`);
