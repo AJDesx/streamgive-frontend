@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import { CopyLinkButton } from '@/components/common/CopyLinkButton';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
-import { getNgo } from '@/lib/api';
+import { getNgo, type NgoProfile } from '@/lib/api';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -25,13 +25,9 @@ export default async function DonateSuccessPage({ params, searchParams }: Props)
   const { id } = await params;
   const { streamId } = await searchParams;
 
-  let ngoName: string;
+  let ngo: NgoProfile | null;
   try {
-    const ngo = await getNgo(id);
-    if (!ngo) {
-      notFound();
-    }
-    ngoName = ngo.name;
+    ngo = await getNgo(id);
   } catch {
     return (
       <>
@@ -45,6 +41,14 @@ export default async function DonateSuccessPage({ params, searchParams }: Props)
       </>
     );
   }
+
+  // notFound() works by throwing, so it has to stay outside the try/catch
+  // above or the catch would swallow it and show the API error instead.
+  if (!ngo) {
+    notFound();
+  }
+
+  const ngoName = ngo.name;
 
   return (
     <>
