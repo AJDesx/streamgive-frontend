@@ -145,12 +145,14 @@ export default async function NgoProfilePage({ params }: Props) {
         </dl>
 
         <div className="mt-10 flex flex-wrap items-start gap-8">
-          <Link
-            href={`/ngos/${ngo.id}/donate`}
-            className="inline-block rounded-md bg-black px-6 py-3 text-sm font-medium text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-          >
-            Start streaming
-          </Link>
+          {ngo.verified && (
+            <Link
+              href={`/ngos/${ngo.id}/donate`}
+              className="inline-block rounded-md bg-black px-6 py-3 text-sm font-medium text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+            >
+              Start streaming
+            </Link>
+          )}
 
           <DonateQrCode ngoId={ngo.id} ngoName={ngo.name} />
         </div>

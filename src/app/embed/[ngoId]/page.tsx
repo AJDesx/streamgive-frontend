@@ -42,6 +42,16 @@ export default async function EmbedDonatePage({ params }: Props) {
   const ngoName = ngo.name;
   const ngoAddress = ngo.ownerAddress;
 
+  if (!ngo.verified) {
+    return (
+      <div className="mx-auto max-w-sm p-6 text-center">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          {ngoName} is not yet verified and cannot receive streams at this time.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-sm p-6">
       <h1 className="text-lg font-bold">Give to {ngoName}</h1>
