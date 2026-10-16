@@ -11,7 +11,11 @@ function tokenLabel(tokenAddress: string): string {
 }
 
 function escapeCsvField(value: string): string {
-  return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+  // A field starting with =, +, - or @ runs as a formula when opened in a
+  // spreadsheet — prefix it with a single quote so it's read as literal
+  // text instead (the standard CSV injection mitigation).
+  const guarded = /^[=+\-@]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(guarded) ? `"${guarded.replace(/"/g, '""')}"` : guarded;
 }
 
 /** Builds a CSV of a donor's streams for the dashboard's "Export CSV"
