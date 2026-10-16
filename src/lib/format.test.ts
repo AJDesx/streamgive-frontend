@@ -63,6 +63,30 @@ describe('formatAmount', () => {
       expect(formatAmount('15000000')).toBe('1.5');
     });
   });
+
+  // issue #216: a malformed API value (empty string, a decimal, null/
+  // undefined slipping through at runtime despite the `string` type) used
+  // to throw inside BigInt() and take down the whole page via error.tsx.
+  describe('given a malformed raw value', () => {
+    it('returns the placeholder instead of throwing for an empty string', () => {
+      expect(formatAmount('')).toBe('—');
+    });
+
+    it('returns the placeholder instead of throwing for a decimal string', () => {
+      expect(formatAmount('1.5')).toBe('—');
+    });
+
+    it('returns the placeholder instead of throwing for null/undefined', () => {
+      // The API's type says `string`, but a malformed response can still
+      // send null/undefined at runtime.
+      expect(formatAmount(null as unknown as string)).toBe('—');
+      expect(formatAmount(undefined as unknown as string)).toBe('—');
+    });
+
+    it('returns the placeholder instead of throwing for non-numeric text', () => {
+      expect(formatAmount('not-a-number')).toBe('—');
+    });
+  });
 });
 
 describe('parseAmount', () => {

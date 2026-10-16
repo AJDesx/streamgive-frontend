@@ -103,6 +103,22 @@ describe('loadPlatformImpact', () => {
     });
   });
 
+  it('skips an NGO profile that 5xxs instead of failing the whole aggregation', async () => {
+    stubNgoApi({
+      profiles: {
+        'ngo-1': { totalCommitted: '1000000000', activeStreamCount: 2 },
+        'ngo-2': 503,
+        'ngo-3': { totalCommitted: '50000000', activeStreamCount: 1 },
+      },
+    });
+
+    await expect(loadPlatformImpact()).resolves.toMatchObject({
+      totalCommitted: 1050000000n,
+      activeStreams: 3,
+      ngoCount: 3,
+    });
+  });
+
   it('rejects when the NGO list cannot be fetched, so callers can hide degraded UI', async () => {
     stubNgoApi({ listStatus: 503 });
 

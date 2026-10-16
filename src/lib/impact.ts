@@ -28,14 +28,19 @@ export type PlatformImpact = {
  */
 export async function loadPlatformImpact(signal?: AbortSignal): Promise<PlatformImpact> {
   const ngos = await getNgos(signal);
-  const profiles = await Promise.all(ngos.map((ngo) => getNgo(ngo.id, signal)));
+  // allSettled, not all: one NGO's profile 5xx-ing or timing out must not
+  // take down every other NGO's already-fetched stats (issue #213) — a
+  // single rejection in Promise.all rejects the whole aggregate, which
+  // previously only a 404 (mapped to a resolved `null`) survived.
+  const results = await Promise.allSettled(ngos.map((ngo) => getNgo(ngo.id, signal)));
 
   let totalCommitted = 0n;
   let totalWithdrawn = 0n;
   let activeStreams = 0;
 
-  for (const profile of profiles) {
-    if (!profile) continue;
+  for (const result of results) {
+    if (result.status !== 'fulfilled' || !result.value) continue;
+    const profile = result.value;
     totalCommitted += BigInt(profile.stats.totalCommitted);
     totalWithdrawn += BigInt(profile.stats.totalWithdrawn);
     activeStreams += profile.stats.activeStreamCount;

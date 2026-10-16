@@ -13,6 +13,12 @@ export const TOKEN_DECIMALS = 7;
 // regardless of their own browser's locale setting.
 const AMOUNT_LOCALE = 'en-US';
 
+// A raw i128 amount, as the backend sends it, is always a bare (optionally
+// signed) integer string -- BigInt() also accepts "0x1", " 1", "" and other
+// forms that aren't valid amounts, so this is stricter than just "does
+// BigInt() throw".
+const RAW_AMOUNT_PATTERN = /^-?\d+$/;
+
 /** Formats a raw i128 amount string (as returned by the backend) into a
  * human-readable decimal. Splits the integer/fractional parts on the
  * BigInt directly, so precision is preserved even for values well past
@@ -23,8 +29,16 @@ const AMOUNT_LOCALE = 'en-US';
  * `decimals` defaults to TOKEN_DECIMALS (every Stellar Asset Contract, which
  * covers native XLM and USDC here) but a donor-supplied custom token can
  * declare a different scale, which the caller must look up via the token's
- * own `decimals()` (see getTokenDecimals in stellar.ts) and pass through. */
+ * own `decimals()` (see getTokenDecimals in stellar.ts) and pass through.
+ *
+ * Returns '—' for a value that isn't a plain integer string (empty, `null`/
+ * `undefined` slipping through at runtime, a decimal like "1.5", NaN, etc.)
+ * instead of throwing (issue #216) -- the API's TypeScript types promise a
+ * `string`, but a malformed response shouldn't take down the whole page. */
 export function formatAmount(raw: string, decimals: number = TOKEN_DECIMALS): string {
+  if (typeof raw !== 'string' || !RAW_AMOUNT_PATTERN.test(raw)) {
+    return '—';
+  }
   const value = BigInt(raw);
   const isNegative = value < 0n;
   const abs = isNegative ? -value : value;
