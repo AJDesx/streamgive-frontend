@@ -25,7 +25,7 @@ export function buildDonationHistoryCsv(streams: Stream[]): string {
       stream.status === 'ACTIVE' ? 'Active' : 'Cancelled',
       formatTokenAmount(committed.toString(), stream.tokenAddress),
       formatTokenAmount(stream.withdrawn, stream.tokenAddress),
-      new Date(stream.createdAt).toLocaleDateString(),
+      new Date(stream.createdAt).toLocaleDateString('en-US', { timeZone: 'UTC' }),
     ].map(escapeCsvField);
   });
 
