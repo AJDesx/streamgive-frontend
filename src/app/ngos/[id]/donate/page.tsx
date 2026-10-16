@@ -45,6 +45,21 @@ export default async function DonatePage({ params }: Props) {
   // database id — `id` above is only a route/lookup key into our API.
   const ngoAddress = ngo.ownerAddress;
 
+  if (!ngo.verified) {
+    return (
+      <>
+        <Header />
+        <main id="main" className="px-6 py-16 sm:px-12">
+          <h1 className="text-2xl font-bold">Start streaming to {ngoName}</h1>
+          <p className="mt-6 text-gray-600 dark:text-gray-400">
+            {ngoName} is not yet verified and cannot receive streams at this time.
+          </p>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
   return (
     <>
       <Header />
