@@ -7,12 +7,13 @@ and are **not secret**. Never put credentials or private keys here.
 
 | Variable | Required | Default (from `.env.example`) | Description |
 |---|---|---|---|
-| `NEXT_PUBLIC_API_URL` | Yes | `http://localhost:3000` | Base URL of the `streamgive-backend` API. Change this to point at staging or production when deploying. |
-| `NEXT_PUBLIC_SOROBAN_RPC_URL` | Yes | `https://soroban-testnet.stellar.org` | Stellar Soroban RPC endpoint used for all on-chain reads and contract calls. Must match the network of the deployed contracts. |
-| `NEXT_PUBLIC_NETWORK_PASSPHRASE` | Yes | `Test SDF Network ; September 2015` | Stellar network passphrase. Use `Public Global Stellar Network ; September 2015` for mainnet. |
+| `NEXT_PUBLIC_API_URL` | No | `http://localhost:3000` | Base URL of the `streamgive-backend` API. Change this to point at staging or production when deploying. |
+| `NEXT_PUBLIC_APP_URL` | No | `http://localhost:3001` | The app's own origin, used by `robots.ts` and `sitemap.ts` to build absolute URLs for SEO metadata. |
+| `NEXT_PUBLIC_SOROBAN_RPC_URL` | No | `https://soroban-testnet.stellar.org` | Stellar Soroban RPC endpoint used for all on-chain reads and contract calls. Must match the network of the deployed contracts. |
+| `NEXT_PUBLIC_NETWORK_PASSPHRASE` | No | `Test SDF Network ; September 2015` | Stellar network passphrase. Use `Public Global Stellar Network ; September 2015` for mainnet. |
 | `NEXT_PUBLIC_DONATION_VAULT_CONTRACT_ID` | Yes | *(testnet value pre-filled)* | Soroban contract ID of the deployed `DonationVault` contract. Find the current value in `streamgive-contracts/deployments.json`. |
 | `NEXT_PUBLIC_NGO_REGISTRY_CONTRACT_ID` | Yes | *(testnet value pre-filled)* | Soroban contract ID of the deployed `NgoRegistry` contract. Find the current value in `streamgive-contracts/deployments.json`. |
-| `NEXT_PUBLIC_USDC_ISSUER` | Yes | `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5` (testnet) | Stellar account address of Circle's USDC issuer. The USDC token contract address is derived from this value at runtime — switch to the mainnet issuer address when moving to production. |
+| `NEXT_PUBLIC_USDC_ISSUER` | No | `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5` (testnet) | Stellar account address of Circle's USDC issuer. The USDC token contract address is derived from this value at runtime — switch to the mainnet issuer address when moving to production. |
 
 ## Notes
 

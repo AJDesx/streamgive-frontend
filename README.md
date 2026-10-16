@@ -160,7 +160,7 @@ This table lists every route under `src/app`, who it is meant for, and its techn
 | `/ngos/[id]/donate` | Donor | No (Form requires Wallet) | Server Component |
 | `/platform-admin` | Platform Admin | Yes (Wallet + `ADMIN_ADDRESS`) | Client Component |
 
-See the [Embed Widget Guide](./EMBED.md) for details on embedding the `/embed/[ngoId]` widget.
+See the [Embed Widget Guide](./docs/EMBED.md) for details on embedding the `/embed/[ngoId]` widget.
 
 ## Contributing
 

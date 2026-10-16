@@ -45,6 +45,17 @@ work to date.
   `WithdrawButton`.
 - `CONTRIBUTING.md` (with a Testing section and accessibility checklist)
   and `ENVIRONMENT.md`, plus a Troubleshooting section in the README.
+- QR code linking to an NGO's donate page, with a PNG download for
+  offline/print sharing, and a wallet balance display on the donate form.
+- Quick-amount presets and a confirmation summary on the donate form.
+- Route-transition progress bar, and a persistent testnet/mainnet
+  environment banner.
+- Light/dark theme toggle button.
+- Filtering and sorting on the NGO admin stream list, and a transaction
+  history view of an NGO's past withdrawals, with an accrued-amount
+  confirmation step before withdrawing.
+- Status filtering on the donor dashboard stream list, and a live
+  estimated balance shown for active streams.
 
 ### Changed
 
@@ -73,3 +84,10 @@ work to date.
 - A broken merge that left invalid syntax and a stale lockfile in place
   was repaired so CI (lint, typecheck, build, and both test suites) passes
   end to end again.
+- Donation amounts formatted with a fixed locale instead of the browser's,
+  for consistent output across visitors.
+- Stream rate calculation now accounts for the truncation remainder.
+- The impact page's polling cleans up on unmount instead of continuing
+  after the component is gone.
+- Modifying a stream's rate now uses the freshly fetched balance instead
+  of a stale one.

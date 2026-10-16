@@ -87,6 +87,14 @@ sandboxed iframe needs:
 Omitting `sandbox` entirely (the default, and what the generated snippet
 does) is simplest and is what's tested.
 
+## API unreachable fallback
+
+If the backing StreamGive API is unreachable, the widget doesn't crash the
+iframe — it renders a centered fallback message instead ("Couldn't reach
+the StreamGive API.", see
+[`src/app/embed/[ngoId]/page.tsx`](../src/app/embed/[ngoId]/page.tsx)). Your
+page's layout around the iframe is unaffected either way.
+
 ## Platform-specific examples
 
 ### Plain HTML
