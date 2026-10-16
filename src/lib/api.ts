@@ -79,7 +79,7 @@ export type NgoProfile = Ngo & {
  * @throws {Error} if the response is not ok and not a 404.
  */
 export async function getNgo(id: string, signal?: AbortSignal): Promise<NgoProfile | null> {
-  const res = await fetch(`${API_URL}/ngos/${id}`, {
+  const res = await fetch(`${API_URL}/ngos/${encodeURIComponent(id)}`, {
     next: { revalidate: 30 },
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(API_TIMEOUT_MS)])
@@ -185,7 +185,7 @@ export type Withdrawal = {
  * @throws {Error} if the response is not ok.
  */
 export async function getWithdrawals(ngoId: string, signal?: AbortSignal): Promise<Withdrawal[]> {
-  const res = await fetch(`${API_URL}/ngos/${ngoId}/withdrawals`, {
+  const res = await fetch(`${API_URL}/ngos/${encodeURIComponent(ngoId)}/withdrawals`, {
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(API_TIMEOUT_MS)])
       : AbortSignal.timeout(API_TIMEOUT_MS),
@@ -245,12 +245,40 @@ export async function getApplicationStatus(
   return res.json();
 }
 
+/** Shape of the backend's error responses: a top-level message plus,
+ * for 400s, the zod issues that caused it. */
+type BackendErrorBody = {
+  error?: string;
+  message?: string;
+  details?: { path?: (string | number)[]; message: string }[];
+};
+
+/** Reads the backend's error message (and any zod validation details) off
+ * a failed response, falling back to `fallback` if the body isn't JSON or
+ * doesn't carry a recognizable message. */
+async function readErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = (await res.json()) as BackendErrorBody;
+    const message = body.error ?? body.message ?? fallback;
+    if (Array.isArray(body.details) && body.details.length > 0) {
+      const detail = body.details
+        .map((d) => (d.path && d.path.length > 0 ? `${d.path.join('.')}: ${d.message}` : d.message))
+        .join('; ');
+      return `${message} (${detail})`;
+    }
+    return message;
+  } catch {
+    return fallback;
+  }
+}
+
 /**
  * Submits a new NGO application for review.
  *
  * @throws {ApiError} with status 409 if an application from this
- * `ownerAddress` is already pending review, or with the response's status
- * for any other non-ok response.
+ * `ownerAddress` is already pending review, or with the backend's own
+ * error message (including zod validation details, if any) and the
+ * response's status for any other non-ok response.
  */
 export async function submitNgoApplication(input: NgoApplicationInput): Promise<NgoApplication> {
   const res = await fetch(`${API_URL}/ngo-applications`, {
@@ -264,7 +292,7 @@ export async function submitNgoApplication(input: NgoApplicationInput): Promise<
     throw new ApiError('An application from this address is already pending review.', 409);
   }
   if (!res.ok) {
-    throw new ApiError('Failed to submit application.', res.status);
+    throw new ApiError(await readErrorMessage(res, 'Failed to submit application.'), res.status);
   }
   return res.json();
 }
