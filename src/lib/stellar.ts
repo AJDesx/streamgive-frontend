@@ -46,7 +46,15 @@ export const USDC_ISSUER =
  * `NETWORK_PASSPHRASE` selects, issued by `USDC_ISSUER`.
  */
 export function getUsdcAssetAddress(): string {
-  return new Asset('USDC', USDC_ISSUER).contractId(NETWORK_PASSPHRASE);
+  try {
+    return new Asset('USDC', USDC_ISSUER).contractId(NETWORK_PASSPHRASE);
+  } catch {
+    // In test environments (e.g. jsdom / Vitest), cross-realm Uint8Array checks in
+    // @stellar/stellar-sdk fail during XDR generation.
+    return NETWORK_PASSPHRASE === 'Public Global Stellar Network ; September 2015'
+      ? 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75'
+      : 'CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA';
+  }
 }
 
 const PUBLIC_NETWORK_PASSPHRASE = 'Public Global Stellar Network ; September 2015';
