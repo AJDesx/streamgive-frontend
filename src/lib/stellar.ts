@@ -150,16 +150,61 @@ export async function getTokenDecimals(tokenAddress: string): Promise<number | n
 }
 
 /**
- * Builds a stellar.expert URL for an account (wallet/NGO) or contract
- * (token) address, pointed at whichever network NETWORK_PASSPHRASE selects.
+ * Builds a stellar.expert URL for an account (wallet/NGO), contract
+ * (token) address, or transaction, pointed at whichever network
+ * NETWORK_PASSPHRASE selects.
  *
- * @param kind - Whether `id` is a Stellar account (`G...`) or a contract
- * (`C...`).
- * @param id - The account or contract address to link to.
- * @returns A stellar.expert explorer URL for that address on the current
+ * @param kind - Whether `id` is a Stellar account (`G...`), a contract
+ * (`C...`), or a transaction hash.
+ * @param id - The account address, contract address, or transaction hash to link to.
+ * @returns A stellar.expert explorer URL for that entity on the current
  * network.
  */
-export function explorerUrl(kind: 'account' | 'contract', id: string): string {
+export function explorerUrl(
+  kind: 'account' | 'contract' | 'transaction' | 'tx',
+  id: string,
+): string {
   const network = NETWORK_NAME === 'Mainnet' ? 'public' : 'testnet';
-  return `https://stellar.expert/explorer/${network}/${kind}/${id}`;
+  const pathKind = kind === 'transaction' ? 'tx' : kind;
+  return `https://stellar.expert/explorer/${network}/${pathKind}/${id}`;
 }
+
+/**
+ * Attempts to extract the transaction hash string from either a SentTransaction
+ * return object or the underlying built transaction envelope.
+ */
+export function extractTxHash(sent?: unknown, tx?: unknown): string | null {
+  if (sent && typeof sent === 'object') {
+    const s = sent as Record<string, unknown>;
+    if (typeof s.hash === 'string') return s.hash;
+    if (typeof s.txHash === 'string') return s.txHash;
+    if (s.sendTransactionResponse && typeof (s.sendTransactionResponse as Record<string, unknown>).hash === 'string') {
+      return (s.sendTransactionResponse as Record<string, unknown>).hash as string;
+    }
+    if (s.getTransactionResponse && typeof (s.getTransactionResponse as Record<string, unknown>).txHash === 'string') {
+      return (s.getTransactionResponse as Record<string, unknown>).txHash as string;
+    }
+  }
+  if (tx && typeof tx === 'object') {
+    const t = tx as Record<string, unknown>;
+    if (t.built && typeof (t.built as Record<string, unknown>).hash === 'function') {
+      try {
+        const h = (t.built as { hash: () => Buffer | Uint8Array }).hash();
+        return Buffer.from(h).toString('hex');
+      } catch {
+        // ignore
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Returns a 'View transaction' toast action if a transaction hash can be resolved.
+ */
+export function txToastAction(sent?: unknown, tx?: unknown): { label: string; url: string } | undefined {
+  const hash = extractTxHash(sent, tx);
+  return hash ? { label: 'View transaction', url: explorerUrl('transaction', hash) } : undefined;
+}
+
+

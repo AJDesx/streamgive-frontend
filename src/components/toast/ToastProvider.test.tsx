@@ -8,6 +8,16 @@ function TestComponent() {
   return (
     <>
       <button onClick={() => showToast('success', 'Success Toast')}>Show Success</button>
+      <button
+        onClick={() =>
+          showToast('success', 'With Action', {
+            label: 'View transaction',
+            url: 'https://stellar.expert/explorer/testnet/tx/123',
+          })
+        }
+      >
+        Show With Action
+      </button>
       <button onClick={() => showToast('error', 'Error Toast')}>Show Error</button>
       <button onClick={() => showToast('info', 'Info Toast')}>Show Info</button>
     </>
@@ -73,5 +83,18 @@ describe('ToastProvider', () => {
     expect(() => render(<OutsideProvider />)).toThrow('useToast must be used within a ToastProvider');
     
     console.error = originalError;
+  });
+
+  it('renders an action link when action is provided', () => {
+    render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByText('Show With Action'));
+    const link = screen.getByRole('link', { name: 'View transaction' });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute('href', 'https://stellar.expert/explorer/testnet/tx/123');
   });
 });

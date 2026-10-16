@@ -71,6 +71,8 @@ function downloadDonationHistoryCsv(streams: Stream[]): void {
   URL.revokeObjectURL(url);
 }
 
+export type SortOrder = 'newest' | 'oldest' | 'largest-committed' | 'ending-soonest';
+
 export default function DashboardPage() {
   const { address } = useWallet();
   const [streams, setStreams] = useState<Stream[]>([]);
@@ -81,6 +83,7 @@ export default function DashboardPage() {
   const [filterInitialized, setFilterInitialized] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
 
   // Drop any streams fetched under a previous address as soon as `address`
   // changes, during render rather than in an effect, so a stale list from
@@ -209,11 +212,41 @@ export default function DashboardPage() {
     if (trimmedSearchQuery && !s.onChainId.includes(trimmedSearchQuery)) return false;
     return true;
   });
-  const visibleStreams = filteredStreams.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredStreams.length;
 
-  // A new filter or search is a new list, so it starts back at the first
-  // page rather than inheriting however far "Load more" had gone.
+  const sortedStreams = [...filteredStreams].sort((a, b) => {
+    if (sortOrder === 'newest') {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    if (sortOrder === 'oldest') {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    }
+    if (sortOrder === 'largest-committed') {
+      const commA = BigInt(a.balance) + BigInt(a.withdrawn);
+      const commB = BigInt(b.balance) + BigInt(b.withdrawn);
+      if (commB > commA) return 1;
+      if (commB < commA) return -1;
+      return 0;
+    }
+    if (sortOrder === 'ending-soonest') {
+      const getRemaining = (s: Stream) => {
+        if (s.status !== 'ACTIVE' || BigInt(s.rate) <= 0n) return 999999999999999n;
+        const b = BigInt(s.balance);
+        if (b <= 0n) return 0n;
+        return b / BigInt(s.rate);
+      };
+      const remA = getRemaining(a);
+      const remB = getRemaining(b);
+      if (remA > remB) return 1;
+      if (remA < remB) return -1;
+      return 0;
+    }
+    return 0;
+  });
+
+  const visibleStreams = sortedStreams.slice(0, visibleCount);
+  const hasMore = visibleCount < sortedStreams.length;
+
+  // A new filter, search, or sort order starts back at the first page
   function handleFilterChange(next: 'ALL' | 'ACTIVE' | 'CANCELLED'): void {
     setFilter(next);
     setVisibleCount(PAGE_SIZE);
@@ -221,6 +254,11 @@ export default function DashboardPage() {
 
   function handleSearchChange(value: string): void {
     setSearchQuery(value);
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function handleSortChange(next: SortOrder): void {
+    setSortOrder(next);
     setVisibleCount(PAGE_SIZE);
   }
 
@@ -293,28 +331,48 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <div className="mt-8 flex gap-4 border-b border-gray-200 dark:border-gray-800">
-              <button
-                type="button"
-                onClick={() => handleFilterChange('ALL')}
-                className={`pb-2 text-sm font-medium ${filter === 'ALL' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFilterChange('ACTIVE')}
-                className={`pb-2 text-sm font-medium ${filter === 'ACTIVE' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
-              >
-                Active
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFilterChange('CANCELLED')}
-                className={`pb-2 text-sm font-medium ${filter === 'CANCELLED' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
-              >
-                Cancelled
-              </button>
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-800">
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => handleFilterChange('ALL')}
+                  className={`pb-2 text-sm font-medium ${filter === 'ALL' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFilterChange('ACTIVE')}
+                  className={`pb-2 text-sm font-medium ${filter === 'ACTIVE' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+                >
+                  Active
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFilterChange('CANCELLED')}
+                  className={`pb-2 text-sm font-medium ${filter === 'CANCELLED' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+                >
+                  Cancelled
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 pb-2">
+                <label htmlFor="sort-order" className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                  Sort:
+                </label>
+                <select
+                  id="sort-order"
+                  aria-label="Sort by"
+                  value={sortOrder}
+                  onChange={(event) => handleSortChange(event.target.value as SortOrder)}
+                  className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-900"
+                >
+                  <option value="newest">Newest</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="largest-committed">Largest committed</option>
+                  <option value="ending-soonest">Ending soonest</option>
+                </select>
+              </div>
             </div>
 
             <label className="mt-4 block max-w-xs">
@@ -352,6 +410,9 @@ export default function DashboardPage() {
                       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         {stream.status === 'ACTIVE' ? 'Active' : 'Cancelled'} · Balance{' '}
                         <LiveBalance stream={stream} /> · Withdrawn {formatAmount(stream.withdrawn)}
+                        {stream.status === 'ACTIVE' && formatRemainingDuration(stream.balance, stream.rate)
+                          ? ` · ${formatRemainingDuration(stream.balance, stream.rate)}`
+                          : ''}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-2">

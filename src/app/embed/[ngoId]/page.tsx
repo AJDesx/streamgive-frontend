@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { CreateStreamForm } from '@/components/donate/CreateStreamForm';
+import { EmbedAutoResizer } from '@/components/embed/EmbedAutoResizer';
 import { getNgo, type NgoProfile } from '@/lib/api';
 
 type Props = { params: Promise<{ ngoId: string }> };
@@ -27,9 +28,11 @@ export default async function EmbedDonatePage({ params }: Props) {
     ngo = await getNgo(ngoId);
   } catch {
     return (
-      <div className="p-6 text-center text-sm text-red-600 dark:text-red-400">
-        Couldn&apos;t reach the StreamGive API.
-      </div>
+      <EmbedAutoResizer>
+        <div className="p-6 text-center text-sm text-red-600 dark:text-red-400">
+          Couldn&apos;t reach the StreamGive API.
+        </div>
+      </EmbedAutoResizer>
     );
   }
 
@@ -43,12 +46,14 @@ export default async function EmbedDonatePage({ params }: Props) {
   const ngoAddress = ngo.ownerAddress;
 
   return (
-    <div className="mx-auto max-w-sm p-6">
-      <h1 className="text-lg font-bold">Give to {ngoName}</h1>
-      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Powered by StreamGive</p>
-      <div className="mt-6">
-        <CreateStreamForm ngoAddress={ngoAddress} ngoName={ngoName} />
+    <EmbedAutoResizer>
+      <div className="mx-auto max-w-sm p-6">
+        <h1 className="text-lg font-bold">Give to {ngoName}</h1>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Powered by StreamGive</p>
+        <div className="mt-6">
+          <CreateStreamForm ngoAddress={ngoAddress} ngoName={ngoName} />
+        </div>
       </div>
-    </div>
+    </EmbedAutoResizer>
   );
 }

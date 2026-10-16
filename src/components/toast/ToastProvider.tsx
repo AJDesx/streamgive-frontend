@@ -2,11 +2,12 @@
 
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
 
-type ToastType = 'success' | 'error' | 'info';
-type Toast = { id: number; type: ToastType; message: string };
+export type ToastType = 'success' | 'error' | 'info';
+export type ToastAction = { label: string; url: string };
+export type Toast = { id: number; type: ToastType; message: string; action?: ToastAction };
 
-type ToastContextValue = {
-  showToast: (type: ToastType, message: string) => void;
+export type ToastContextValue = {
+  showToast: (type: ToastType, message: string, action?: ToastAction) => void;
 };
 
 const ToastContext = createContext<ToastContextValue | null>(null);
@@ -62,9 +63,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const showToast = useCallback(
-    (type: ToastType, message: string) => {
+    (type: ToastType, message: string, action?: ToastAction) => {
       const id = nextId++;
-      setToasts((current) => [...current, { id, type, message }]);
+      setToasts((current) => [...current, { id, type, message, action }]);
       scheduleDismiss(id);
     },
     [scheduleDismiss],
@@ -86,7 +87,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             onBlur={() => scheduleDismiss(toast.id)}
             className={`flex max-w-sm items-start gap-3 rounded-md px-4 py-3 text-sm font-medium shadow-lg ${TOAST_STYLES[toast.type]}`}
           >
-            <p className="flex-1">{toast.message}</p>
+            <div className="flex-1">
+              <p>{toast.message}</p>
+              {toast.action && (
+                <a
+                  href={toast.action.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-block text-xs font-semibold underline underline-offset-2 opacity-90 hover:opacity-100"
+                >
+                  {toast.action.label}
+                </a>
+              )}
+            </div>
             <button
               type="button"
               onClick={() => dismissToast(toast.id)}

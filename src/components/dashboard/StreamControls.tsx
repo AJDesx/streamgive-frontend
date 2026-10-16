@@ -7,6 +7,7 @@ import { useWallet } from '@/components/wallet/WalletProvider';
 import { getStreams, type Stream } from '@/lib/api';
 import { useDonationVaultClient } from '@/lib/donationVaultClient';
 import { describeAmountError, formatEstimatedFee, parseAmount, TOKEN_DECIMALS } from '@/lib/format';
+import { txToastAction } from '@/lib/stellar';
 
 /**
  * Computes the per-second token rate for a stream modification.
@@ -81,8 +82,8 @@ export function StreamControls({
         amount: topUpAmountRaw,
       });
       setEstimatedFee(formatEstimatedFee(tx.built?.fee));
-      await tx.signAndSend();
-      showToast('success', `Stream topped up — ${INDEXING_LAG_NOTE}.`);
+      const sent = await tx.signAndSend();
+      showToast('success', `Stream topped up — ${INDEXING_LAG_NOTE}.`, txToastAction(sent, tx));
       setTopUpAmount('');
       onOptimisticUpdate?.({ balance: (BigInt(stream.balance) + topUpAmountRaw).toString() });
       onChanged();
@@ -101,8 +102,8 @@ export function StreamControls({
     try {
       const tx = await client.cancel_stream({ stream_id: BigInt(stream.onChainId) });
       setEstimatedFee(formatEstimatedFee(tx.built?.fee));
-      await tx.signAndSend();
-      showToast('success', `Stream cancelled — ${INDEXING_LAG_NOTE}.`);
+      const sent = await tx.signAndSend();
+      showToast('success', `Stream cancelled — ${INDEXING_LAG_NOTE}.`, txToastAction(sent, tx));
       onOptimisticUpdate?.({ status: 'CANCELLED' });
       onChanged();
     } catch (err) {
@@ -157,8 +158,8 @@ export function StreamControls({
         new_rate: newRate,
       });
       setEstimatedFee(formatEstimatedFee(tx.built?.fee));
-      await tx.signAndSend();
-      showToast('success', `Rate updated — ${INDEXING_LAG_NOTE}.`);
+      const sent = await tx.signAndSend();
+      showToast('success', `Rate updated — ${INDEXING_LAG_NOTE}.`, txToastAction(sent, tx));
       onChanged();
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Something went wrong.');
