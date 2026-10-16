@@ -10,6 +10,7 @@ import { useDonationVaultClient } from '@/lib/donationVaultClient';
 import {
   describeAmountError,
   formatAmount,
+  formatAmountInput,
   formatEstimatedFee,
   parseAmount,
   TOKEN_DECIMALS,
@@ -20,9 +21,11 @@ import {
   getTokenBalance,
   getTokenDecimals,
   getUsdcAssetAddress,
+  NATIVE_FEE_RESERVE,
   txToastAction,
 } from '@/lib/stellar';
 import { describeContractError } from '@/lib/contractTypes';
+
 
 const DURATIONS = [
   { label: '1 week', seconds: 7 * 24 * 60 * 60 },
@@ -127,8 +130,18 @@ export function CreateStreamForm({
           ? customTokenTrimmed
           : null;
 
+  // For native XLM, reserve 1 XLM base account reserve + 0.1 XLM estimated fee buffer
+  // so donors cannot deposit funds needed to cover transaction fees and minimum reserve.
+  const maxSpendableRaw =
+    walletBalance === null
+      ? null
+      : tokenChoice === 'native'
+        ? (BigInt(walletBalance) > NATIVE_FEE_RESERVE ? BigInt(walletBalance) - NATIVE_FEE_RESERVE : 0n)
+        : BigInt(walletBalance);
+
   const insufficientBalance =
-    walletBalance !== null && depositRaw !== null && depositRaw > BigInt(walletBalance);
+    maxSpendableRaw !== null && depositRaw !== null && depositRaw > maxSpendableRaw;
+
 
   const canSubmit =
     isAmountValid &&
@@ -148,12 +161,14 @@ export function CreateStreamForm({
   // the StrKey format check) doesn't fire a lookup against a non-address.
   useEffect(() => {
     if (tokenChoice !== 'custom') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTokenDecimals(TOKEN_DECIMALS);
       setDecimalsLoading(false);
       setDecimalsError(false);
       return;
     }
     if (!selectedTokenAddress) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTokenDecimals(null);
       setDecimalsLoading(false);
       setDecimalsError(false);
@@ -187,6 +202,7 @@ export function CreateStreamForm({
 
   useEffect(() => {
     if (!address || !selectedTokenAddress) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWalletBalance(null);
       return;
     }
@@ -215,7 +231,15 @@ export function CreateStreamForm({
   const durationLabel =
     DURATIONS.find((d) => d.seconds === durationSeconds)?.label ?? `${durationSeconds}s`;
 
+  function handleMaxClick(): void {
+    if (maxSpendableRaw === null || maxSpendableRaw <= 0n) {
+      return;
+    }
+    setAmount(formatAmountInput(maxSpendableRaw, tokenDecimals ?? TOKEN_DECIMALS));
+  }
+
   // Intercepts the flow before the contract call: pressing "Review & Sign"
+
   // only opens the confirmation summary. The actual create_stream call
   // (previously fired straight from here) now lives in handleConfirm,
   // gated behind that extra step so a donor sees NGO/token/amount/rate/end
@@ -415,7 +439,17 @@ export function CreateStreamForm({
               {preset}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={handleMaxClick}
+            disabled={maxSpendableRaw === null || maxSpendableRaw <= 0n}
+            aria-label="Set amount to max"
+            className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800 dark:focus-visible:ring-teal-400"
+          >
+            Max
+          </button>
         </div>
+
         {amountError !== null && (
           <p id="amount-format-error" className="mt-1 text-sm text-amber-700 dark:text-amber-400">
             {amountError}
