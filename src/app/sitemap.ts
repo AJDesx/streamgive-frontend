@@ -1,9 +1,10 @@
 import type { MetadataRoute } from 'next';
 
 import { getNgos } from '@/lib/api';
+import { APP_URL } from '@/lib/config';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3001';
+  const baseUrl = APP_URL;
 
   const staticPages: MetadataRoute.Sitemap = [
     {
