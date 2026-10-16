@@ -19,7 +19,7 @@ export default function ErrorPage({
   return (
     <>
       <Header />
-      <main className="flex min-h-[60vh] items-center justify-center px-6 py-20 text-center sm:px-12">
+      <main id="main" className="flex min-h-[60vh] items-center justify-center px-6 py-20 text-center sm:px-12">
         <div className="max-w-xl">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-600">
             Something went wrong

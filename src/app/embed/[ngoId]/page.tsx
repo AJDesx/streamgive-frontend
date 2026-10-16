@@ -29,9 +29,9 @@ export default async function EmbedDonatePage({ params }: Props) {
   } catch {
     return (
       <EmbedAutoResizer>
-        <div className="p-6 text-center text-sm text-red-600 dark:text-red-400">
+        <main id="main" className="p-6 text-center text-sm text-red-600 dark:text-red-400">
           Couldn&apos;t reach the StreamGive API.
-        </div>
+        </main>
       </EmbedAutoResizer>
     );
   }
@@ -47,23 +47,23 @@ export default async function EmbedDonatePage({ params }: Props) {
 
   if (!ngo.verified) {
     return (
-      <div className="mx-auto max-w-sm p-6 text-center">
+      <main id="main" className="mx-auto max-w-sm p-6 text-center">
         <p className="text-sm text-gray-600 dark:text-gray-400">
           {ngoName} is not yet verified and cannot receive streams at this time.
         </p>
-      </div>
+      </main>
     );
   }
 
   return (
     <EmbedAutoResizer>
-      <div className="mx-auto max-w-sm p-6">
+      <main id="main" className="mx-auto max-w-sm p-6">
         <h1 className="text-lg font-bold">Give to {ngoName}</h1>
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Powered by StreamGive</p>
         <div className="mt-6">
           <CreateStreamForm ngoAddress={ngoAddress} ngoName={ngoName} />
         </div>
-      </div>
+      </main>
     </EmbedAutoResizer>
   );
 }
