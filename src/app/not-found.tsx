@@ -7,7 +7,7 @@ export default function NotFound() {
   return (
     <>
       <Header />
-      <main className="px-6 py-16 sm:px-12">
+      <main id="main" className="px-6 py-16 sm:px-12">
         <h1 className="text-2xl font-bold">Page not found</h1>
         <p className="mt-2 max-w-md text-gray-600 dark:text-gray-400">
           We couldn&apos;t find what you were looking for. It may have been moved or the link may

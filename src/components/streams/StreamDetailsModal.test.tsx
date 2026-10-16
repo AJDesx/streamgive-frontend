@@ -8,6 +8,7 @@ import { StreamDetailsModal } from './StreamDetailsModal';
 vi.mock('@/lib/stellar', () => ({
   explorerUrl: vi.fn((type, id) => `https://stellar.expert/${type}/${id}`),
   getNativeAssetAddress: vi.fn(() => 'NATIVE_ASSET_ID'),
+  getUsdcAssetAddress: vi.fn(() => 'USDC_ASSET_ID'),
   DONATION_VAULT_CONTRACT_ID: 'CVAULTCONTRACT',
 }));
 

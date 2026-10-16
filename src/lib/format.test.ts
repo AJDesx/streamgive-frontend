@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { describeAmountError, parseAmount, truncateAddress } from './format';
-import { formatAmount } from './format';
+import { formatAmount, formatTokenAmount, formatTokenTotals } from './format';
+import { getNativeAssetAddress, getUsdcAssetAddress } from './stellar';
 
 describe('formatAmount', () => {
   it('formats a typical amount correctly', () => {
@@ -138,5 +139,42 @@ describe('truncateAddress', () => {
   it('truncates a string of exactly 9 characters without overlap', () => {
     // 4 + ellipsis + 4 = 9, so the boundary case should still truncate
     expect(truncateAddress('ABCDE1234')).toBe('ABCD…1234');
+  });
+});
+
+describe('formatTokenAmount', () => {
+  it('appends XLM for the native asset', () => {
+    expect(formatTokenAmount('1000000000', getNativeAssetAddress())).toBe('100 XLM');
+  });
+
+  it('appends USDC for the USDC contract', () => {
+    expect(formatTokenAmount('15000000', getUsdcAssetAddress())).toBe('1.5 USDC');
+  });
+
+  it('appends a shortened address for any other token', () => {
+    expect(formatTokenAmount('10000000', 'CABCDEFGHIJKLMNOPQRSTUVWXYZ')).toBe('1 CABC…WXYZ');
+  });
+
+  it('honours a custom decimals value', () => {
+    expect(formatTokenAmount('1500', getNativeAssetAddress(), 3)).toBe('1.5 XLM');
+  });
+});
+
+describe('formatTokenTotals', () => {
+  it('sums per token and never mixes tokens', () => {
+    const xlm = getNativeAssetAddress();
+    const usdc = getUsdcAssetAddress();
+
+    expect(
+      formatTokenTotals([
+        { tokenAddress: xlm, raw: 10000000n },
+        { tokenAddress: usdc, raw: 20000000n },
+        { tokenAddress: xlm, raw: 5000000n },
+      ]),
+    ).toBe('1.5 XLM, 2 USDC');
+  });
+
+  it('returns a bare 0 for no entries', () => {
+    expect(formatTokenTotals([])).toBe('0');
   });
 });

@@ -1,5 +1,5 @@
 import type { Stream } from './api';
-import { formatAmount } from './format';
+import { formatTokenAmount } from './format';
 import { getNativeAssetAddress } from './stellar';
 
 const CSV_HEADERS = ['NGO', 'Token', 'Status', 'Committed', 'Withdrawn', 'Created'];
@@ -15,7 +15,7 @@ function escapeCsvField(value: string): string {
 }
 
 /** Builds a CSV of a donor's streams for the dashboard's "Export CSV"
- * button — one row per stream, amounts run through formatAmount. */
+ * button — one row per stream, amounts run through formatTokenAmount. */
 export function buildDonationHistoryCsv(streams: Stream[]): string {
   const rows = streams.map((stream) => {
     const committed = BigInt(stream.balance) + BigInt(stream.withdrawn);
@@ -23,8 +23,8 @@ export function buildDonationHistoryCsv(streams: Stream[]): string {
       stream.ngo.name,
       tokenLabel(stream.tokenAddress),
       stream.status === 'ACTIVE' ? 'Active' : 'Cancelled',
-      formatAmount(committed.toString()),
-      formatAmount(stream.withdrawn),
+      formatTokenAmount(committed.toString(), stream.tokenAddress),
+      formatTokenAmount(stream.withdrawn, stream.tokenAddress),
       new Date(stream.createdAt).toLocaleDateString(),
     ].map(escapeCsvField);
   });
