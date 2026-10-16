@@ -79,7 +79,7 @@ export type NgoProfile = Ngo & {
  * @throws {Error} if the response is not ok and not a 404.
  */
 export async function getNgo(id: string, signal?: AbortSignal): Promise<NgoProfile | null> {
-  const res = await fetch(`${API_URL}/ngos/${id}`, {
+  const res = await fetch(`${API_URL}/ngos/${encodeURIComponent(id)}`, {
     next: { revalidate: 30 },
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(API_TIMEOUT_MS)])
@@ -185,7 +185,7 @@ export type Withdrawal = {
  * @throws {Error} if the response is not ok.
  */
 export async function getWithdrawals(ngoId: string, signal?: AbortSignal): Promise<Withdrawal[]> {
-  const res = await fetch(`${API_URL}/ngos/${ngoId}/withdrawals`, {
+  const res = await fetch(`${API_URL}/ngos/${encodeURIComponent(ngoId)}/withdrawals`, {
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(API_TIMEOUT_MS)])
       : AbortSignal.timeout(API_TIMEOUT_MS),

@@ -125,7 +125,7 @@ export async function reviewNgoApplication(
   action: 'approve' | 'reject',
   reviewNote?: string,
 ): Promise<NgoApplication> {
-  const path = `/ngo-applications/${id}/${action}`;
+  const path = `/ngo-applications/${encodeURIComponent(id)}/${action}`;
   const res = await adminFetch('POST', path, address, signMessage, {
     reviewNote: reviewNote?.trim() || undefined,
   });
