@@ -2,8 +2,8 @@
 
 import { useState, useSyncExternalStore } from 'react';
 
-import { useToast } from '@/components/toast/ToastProvider';
 import { APP_URL } from '@/lib/config';
+import { useCopyToClipboard } from '@/lib/useCopyToClipboard';
 
 // The origin never changes while the page is open, so there is nothing to
 // subscribe to — this just lets React read a different value on the server
@@ -44,16 +44,7 @@ export function EmbedSnippet({ ngoId }: { ngoId: string }) {
 
   const snippet = `<iframe src="${origin}/embed/${ngoId}" width="${width}" height="${height}" style="border:0"></iframe>`;
 
-  const { showToast } = useToast();
-
-  async function handleCopy(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(snippet);
-      showToast('success', 'Snippet copied to clipboard.');
-    } catch {
-      // Clipboard access can be denied by the browser
-    }
-  }
+  const { status, copy } = useCopyToClipboard();
 
   return (
     <div className="mt-8 rounded-lg border border-gray-200 p-6 dark:border-gray-800">
@@ -115,11 +106,24 @@ export function EmbedSnippet({ ngoId }: { ngoId: string }) {
       />
       <button
         type="button"
-        onClick={() => void handleCopy()}
-        className="mt-3 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+        onClick={() => void copy(snippet)}
+        className={`mt-3 rounded-md border px-4 py-2 text-sm font-medium ${
+          status === 'error'
+            ? 'border-red-300 text-red-700 dark:border-red-800 dark:text-red-400'
+            : 'border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800'
+        }`}
       >
-        Copy snippet
+        {status === 'copied'
+          ? 'Snippet copied!'
+          : status === 'error'
+          ? 'Copy failed'
+          : 'Copy snippet'}
       </button>
+      <span role="status" aria-live="polite" className="sr-only">
+        {status === 'copied' && 'Snippet copied to clipboard.'}
+        {status === 'error' &&
+          'Could not copy the snippet. Select the text above and copy it manually.'}
+      </span>
     </div>
   );
 }
