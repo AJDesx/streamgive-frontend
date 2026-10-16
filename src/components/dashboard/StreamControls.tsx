@@ -6,7 +6,7 @@ import { useToast } from '@/components/toast/ToastProvider';
 import { useWallet } from '@/components/wallet/WalletProvider';
 import { getStreams, type Stream } from '@/lib/api';
 import { useDonationVaultClient } from '@/lib/donationVaultClient';
-import { formatEstimatedFee, parseAmount, TOKEN_DECIMALS } from '@/lib/format';
+import { describeAmountError, formatEstimatedFee, parseAmount, TOKEN_DECIMALS } from '@/lib/format';
 
 /**
  * Computes the per-second token rate for a stream modification.
@@ -68,6 +68,7 @@ export function StreamControls({
   const [estimatedFee, setEstimatedFee] = useState<string | null>(null);
 
   const topUpAmountRaw = parseAmount(topUpAmount);
+  const topUpAmountError = describeAmountError(topUpAmount);
 
   async function handleTopUp(): Promise<void> {
     if (!address || !client || topUpAmountRaw === null) return;
@@ -169,32 +170,41 @@ export function StreamControls({
 
   if (mode === 'toppingUp') {
     return (
-      <div className="flex items-center gap-2">
-        <input
-          type="number"
-          min="0"
-          step="any"
-          value={topUpAmount}
-          onChange={(event) => setTopUpAmount(event.target.value)}
-          placeholder="Amount"
-          aria-label="Amount to add to this stream"
-          className="w-28 rounded-md border border-gray-300 px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:border-gray-700 dark:focus-visible:ring-teal-400"
-        />
-        <button
-          type="button"
-          onClick={() => void handleTopUp()}
-          disabled={topUpAmountRaw === null}
-          className="rounded-md bg-black px-3 py-1 text-sm font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:opacity-50 dark:bg-white dark:text-black dark:focus-visible:ring-teal-400"
-        >
-          Confirm
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('idle')}
-          className="rounded-md border border-gray-300 px-3 py-1 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:border-gray-700 dark:focus-visible:ring-teal-400"
-        >
-          Back
-        </button>
+      <div className="flex flex-col items-end gap-1">
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min="0"
+            step="any"
+            value={topUpAmount}
+            onChange={(event) => setTopUpAmount(event.target.value)}
+            placeholder="Amount"
+            aria-label="Amount to add to this stream"
+            aria-invalid={topUpAmountError !== null || undefined}
+            aria-describedby={topUpAmountError !== null ? 'top-up-amount-error' : undefined}
+            className="w-28 rounded-md border border-gray-300 px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:border-gray-700 dark:focus-visible:ring-teal-400"
+          />
+          <button
+            type="button"
+            onClick={() => void handleTopUp()}
+            disabled={topUpAmountRaw === null}
+            className="rounded-md bg-black px-3 py-1 text-sm font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:opacity-50 dark:bg-white dark:text-black dark:focus-visible:ring-teal-400"
+          >
+            Confirm
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('idle')}
+            className="rounded-md border border-gray-300 px-3 py-1 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:border-gray-700 dark:focus-visible:ring-teal-400"
+          >
+            Back
+          </button>
+        </div>
+        {topUpAmountError !== null && (
+          <p id="top-up-amount-error" className="text-xs text-amber-600 dark:text-amber-400">
+            {topUpAmountError}
+          </p>
+        )}
       </div>
     );
   }
@@ -245,7 +255,8 @@ export function StreamControls({
           <button
             type="button"
             onClick={() => void handleModifyRate()}
-            className="rounded-md bg-black px-3 py-1 text-sm font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:bg-white dark:text-black dark:focus-visible:ring-teal-400"
+            disabled={pending !== null || previewRate === null}
+            className="rounded-md bg-black px-3 py-1 text-sm font-medium text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:opacity-50 dark:bg-white dark:text-black dark:focus-visible:ring-teal-400"
           >
             Confirm
           </button>

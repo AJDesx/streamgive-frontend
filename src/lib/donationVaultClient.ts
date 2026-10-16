@@ -12,10 +12,8 @@ import { DONATION_VAULT_CONTRACT_ID, NETWORK_PASSPHRASE, SOROBAN_RPC_URL } from 
 type DonationVaultClient = Client & DonationVaultMethods;
 
 /**
- * Fetches a fresh client rather than reusing a cached singleton: Client.from
- * is async (it fetches the contract's spec from the network) and this is
- * cheap enough not to bother caching at this layer — useDonationVaultClient
- * below is what actually caches one, for the UI's benefit.
+ * Builds a fresh client, with no caching at this layer — getSharedDonationVaultClient
+ * below is what caches the resulting promise, for the UI's benefit.
  */
 export async function getDonationVaultClient(
   publicKey: string,
@@ -34,6 +32,37 @@ export async function getDonationVaultClient(
   });
 
   return client as DonationVaultClient;
+}
+
+// Module-level cache keyed by the signer's address, shared by every
+// useDonationVaultClient call in the app — a dashboard page renders one
+// StreamControls/WithdrawButton per row, and without this each row's hook
+// would run its own Client.from() (a spec fetch over RPC), firing N
+// concurrent fetches for N rows (issue #202). Every row awaits the same
+// in-flight/resolved promise instead, so only one fetch ever happens per
+// signer. `hasToastedInitError` rides alongside it so a failure surfaces as
+// one toast, not N identical ones.
+let cached: { address: string; promise: Promise<DonationVaultClient> } | null = null;
+let hasToastedInitError = false;
+
+function getSharedDonationVaultClient(
+  address: string,
+  signTransaction: WalletSignTransaction,
+): Promise<DonationVaultClient> {
+  if (!cached || cached.address !== address) {
+    hasToastedInitError = false;
+    const promise = getDonationVaultClient(address, signTransaction);
+    cached = { address, promise };
+    // Don't leave a rejected promise cached — a future render (reconnect,
+    // remount) should get to retry the fetch rather than replaying the same
+    // failure forever.
+    promise.catch(() => {
+      if (cached?.promise === promise) {
+        cached = null;
+      }
+    });
+  }
+  return cached.promise;
 }
 
 /**
@@ -60,14 +89,15 @@ export function useDonationVaultClient(): { client: DonationVaultClient | null; 
     let cancelled = false;
     setClient(null);
 
-    getDonationVaultClient(address, signTransaction)
+    getSharedDonationVaultClient(address, signTransaction)
       .then((c) => {
         if (!cancelled) {
           setClient(c);
         }
       })
       .catch((err) => {
-        if (!cancelled) {
+        if (!cancelled && !hasToastedInitError) {
+          hasToastedInitError = true;
           showToast(
             'error',
             err instanceof Error ? `Couldn't reach the donation contract: ${err.message}` : `Couldn't reach the donation contract.`,

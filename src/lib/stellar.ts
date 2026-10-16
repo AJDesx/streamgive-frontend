@@ -113,6 +113,43 @@ export async function getTokenBalance(
 }
 
 /**
+ * Reads a SEP-41 token contract's `decimals()`, the same simulated-call
+ * pattern as getTokenBalance above.
+ *
+ * Native XLM and USDC are both Stellar Asset Contracts, which always use 7
+ * decimals, but a donor-supplied custom token contract can declare any
+ * value here — this is how callers (CreateStreamForm) find the real one
+ * instead of assuming TOKEN_DECIMALS (issue #204).
+ *
+ * @returns The token's decimals, or `null` if the simulation fails (e.g.
+ * the address isn't a valid token contract).
+ */
+export async function getTokenDecimals(tokenAddress: string): Promise<number | null> {
+  try {
+    const server = new rpc.Server(SOROBAN_RPC_URL);
+    const account = new Account(SIMULATION_SOURCE_ACCOUNT, '0');
+    const contract = new Contract(tokenAddress);
+
+    const tx = new TransactionBuilder(account, {
+      fee: SIMULATION_FEE,
+      networkPassphrase: NETWORK_PASSPHRASE,
+    })
+      .addOperation(contract.call('decimals'))
+      .setTimeout(30)
+      .build();
+
+    const simulated = await server.simulateTransaction(tx);
+    if (rpc.Api.isSimulationError(simulated) || !simulated.result) {
+      return null;
+    }
+
+    return Number(scValToNative(simulated.result.retval));
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Builds a stellar.expert URL for an account (wallet/NGO) or contract
  * (token) address, pointed at whichever network NETWORK_PASSPHRASE selects.
  *

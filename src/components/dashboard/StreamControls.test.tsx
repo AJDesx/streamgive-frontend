@@ -233,6 +233,25 @@ describe('StreamControls', () => {
       await user.type(screen.getByLabelText(/amount to add/i), '5');
       expect(screen.getByRole('button', { name: 'Confirm' })).toBeEnabled();
     });
+
+    // issue #203: Confirm being disabled didn't say why, so a donor typing
+    // e.g. too many decimal places had no way to tell what was wrong.
+    it('explains why an invalid amount is rejected', async () => {
+      const user = userEvent.setup();
+      render(<StreamControls stream={STREAM} onChanged={vi.fn()} />);
+      await user.click(screen.getByRole('button', { name: 'Top up' }));
+
+      await user.type(screen.getByLabelText(/amount to add/i), '1.23456789');
+      expect(screen.getByText('Use at most 7 decimal places.')).toBeInTheDocument();
+
+      await user.clear(screen.getByLabelText(/amount to add/i));
+      await user.type(screen.getByLabelText(/amount to add/i), '0');
+      expect(screen.getByText('Enter an amount greater than 0.')).toBeInTheDocument();
+
+      await user.clear(screen.getByLabelText(/amount to add/i));
+      await user.type(screen.getByLabelText(/amount to add/i), '5');
+      expect(screen.queryByText('Enter an amount greater than 0.')).not.toBeInTheDocument();
+    });
   });
 
   describe('top-up submission', () => {
@@ -301,6 +320,18 @@ describe('StreamControls', () => {
       expect(screen.getByLabelText(/new duration/i)).toBeInTheDocument();
       expect(client.modify_rate).not.toHaveBeenCalled();
     });
+
+    // issue #201: Confirm had no `disabled` guard at all, so it stayed
+    // clickable even when the previewed rate (computed from the stream prop,
+    // before the submit-time balance re-fetch) was already known to be null.
+    it('disables Confirm up front when the previewed rate is null', async () => {
+      const user = userEvent.setup();
+      render(<StreamControls stream={TINY_BALANCE_STREAM} onChanged={vi.fn()} />);
+
+      await user.click(screen.getByRole('button', { name: 'Modify rate' }));
+
+      expect(screen.getByRole('button', { name: 'Confirm' })).toBeDisabled();
+    });
   });
 
   describe('modify-rate submission', () => {
@@ -350,6 +381,31 @@ describe('StreamControls', () => {
       expect(await screen.findByRole('button', { name: 'Modify rate' })).toBeEnabled();
       expect(onChanged).toHaveBeenCalledTimes(1);
       expect(showToast).toHaveBeenCalledWith('success', expect.stringContaining('Rate updated'));
+    });
+
+    // issue #201: Confirm had no `disabled` guard for a pending submission
+    // either, so clicking it twice in a row (e.g. a slow balance re-fetch)
+    // started two modify_rate flows and two wallet prompts.
+    it('does not start a second flow when Confirm is clicked again while the first is pending', async () => {
+      const modifyRate = vi.fn(async () => neverSettles());
+      useDonationVaultClient.mockReturnValue({
+        client: clientReturning({ modify_rate: modifyRate }),
+        ready: true,
+      });
+      const user = userEvent.setup();
+      render(<StreamControls stream={STREAM} onChanged={vi.fn()} />);
+
+      await user.click(screen.getByRole('button', { name: 'Modify rate' }));
+      const confirm = screen.getByRole('button', { name: 'Confirm' });
+
+      await user.click(confirm);
+      // Confirm disables itself as soon as the first click starts the flow,
+      // so this second click is a no-op rather than a real double-submit --
+      // which is exactly the guard that was missing.
+      await user.click(confirm);
+
+      await vi.waitFor(() => expect(modifyRate).toHaveBeenCalledTimes(1));
+      expect(getStreams).toHaveBeenCalledTimes(1);
     });
 
     it('shows an error toast when the transaction fails', async () => {

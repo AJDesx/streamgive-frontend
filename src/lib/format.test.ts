@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { parseAmount, truncateAddress } from './format';
+import { describeAmountError, parseAmount, truncateAddress } from './format';
 import { formatAmount } from './format';
 
 describe('formatAmount', () => {
@@ -81,6 +81,45 @@ describe('parseAmount', () => {
     // '.5' is half an XLM — 0.5 * 10^7 = 5_000_000 base units. The missing
     // whole part is read as 0 rather than making the input invalid.
     expect(parseAmount('.5')).toBe(5_000_000n);
+  });
+
+  it('respects a custom decimals count instead of always assuming 7 (#204)', () => {
+    // A 6-decimal token: '1.5' is 1_500_000 base units, not the 7-decimal
+    // 15_000_000 that the default would produce.
+    expect(parseAmount('1.5', 6)).toBe(1_500_000n);
+    // More than 6 fractional digits is invalid at that token's own scale,
+    // even though it would be fine at the default 7.
+    expect(parseAmount('1.5000000', 6)).toBeNull();
+  });
+});
+
+describe('describeAmountError', () => {
+  // issue #203: parseAmount's null return can't tell a caller why an amount
+  // was rejected, so the submit/Confirm button was just disabled with no
+  // explanation. describeAmountError gives that reason instead.
+  it('returns null for an untouched empty input', () => {
+    expect(describeAmountError('')).toBeNull();
+    expect(describeAmountError('   ')).toBeNull();
+  });
+
+  it('explains a zero amount', () => {
+    expect(describeAmountError('0')).toBe('Enter an amount greater than 0.');
+  });
+
+  it('explains more than the allowed number of decimal places', () => {
+    expect(describeAmountError('1.23456789')).toBe('Use at most 7 decimal places.');
+  });
+
+  it('uses a custom decimals count in the message for a non-SAC token (#204)', () => {
+    expect(describeAmountError('1.1234567', 6)).toBe('Use at most 6 decimal places.');
+  });
+
+  it('explains input that is not a plain number, like scientific notation', () => {
+    expect(describeAmountError('1e3')).toBe('Enter a valid amount.');
+  });
+
+  it('returns null for a valid amount', () => {
+    expect(describeAmountError('5.5')).toBeNull();
   });
 });
 

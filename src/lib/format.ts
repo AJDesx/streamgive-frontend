@@ -16,18 +16,23 @@ const AMOUNT_LOCALE = 'en-US';
  * BigInt directly, so precision is preserved even for values well past
  * Number.MAX_SAFE_INTEGER. Always renders with 'en-US' grouping/decimal
  * conventions (comma thousands separator, period decimal point) regardless
- * of the viewer's browser locale (issue #155). */
-export function formatAmount(raw: string): string {
+ * of the viewer's browser locale (issue #155).
+ *
+ * `decimals` defaults to TOKEN_DECIMALS (every Stellar Asset Contract, which
+ * covers native XLM and USDC here) but a donor-supplied custom token can
+ * declare a different scale, which the caller must look up via the token's
+ * own `decimals()` (see getTokenDecimals in stellar.ts) and pass through. */
+export function formatAmount(raw: string, decimals: number = TOKEN_DECIMALS): string {
   const value = BigInt(raw);
   const isNegative = value < 0n;
   const abs = isNegative ? -value : value;
-  const divisor = 10n ** BigInt(TOKEN_DECIMALS);
+  const divisor = 10n ** BigInt(decimals);
 
   const whole = abs / divisor;
   const fraction = abs % divisor;
 
   const wholeStr = whole.toLocaleString(AMOUNT_LOCALE);
-  const fractionStr = fraction.toString().padStart(TOKEN_DECIMALS, '0').replace(/0+$/, '');
+  const fractionStr = fraction.toString().padStart(decimals, '0').replace(/0+$/, '');
 
   const formatted = fractionStr ? `${wholeStr}.${fractionStr}` : wholeStr;
   return isNegative ? `-${formatted}` : formatted;
@@ -45,11 +50,15 @@ export function formatEstimatedFee(feeStroops: string | undefined): string | nul
 
 /** Parses a user-typed decimal amount (e.g. from a text input) into a raw
  * i128 value in the token's base units, or `null` if the input isn't a
- * valid positive amount or has more than TOKEN_DECIMALS decimal places.
+ * valid positive amount or has more than `decimals` decimal places.
+ *
+ * `decimals` defaults to TOKEN_DECIMALS — pass a token's actual decimals
+ * (see getTokenDecimals in stellar.ts) when parsing an amount for a
+ * custom token, which may not use the Stellar Asset Contract's 7.
  *
  * Works on the digits as strings rather than going through Number(), which
  * silently changes values past ~15 significant digits. */
-export function parseAmount(input: string): bigint | null {
+export function parseAmount(input: string, decimals: number = TOKEN_DECIMALS): bigint | null {
   const match = /^(\d*)(?:\.(\d*))?$/.exec(input.trim());
   if (!match) {
     return null;
@@ -59,12 +68,41 @@ export function parseAmount(input: string): bigint | null {
   if (whole === '' && fraction === '') {
     return null;
   }
-  if (fraction.length > TOKEN_DECIMALS) {
+  if (fraction.length > decimals) {
     return null;
   }
 
-  const raw = BigInt((whole || '0') + fraction.padEnd(TOKEN_DECIMALS, '0'));
+  const raw = BigInt((whole || '0') + fraction.padEnd(decimals, '0'));
   return raw > 0n ? raw : null;
+}
+
+/** Explains why `parseAmount(input, decimals)` would return `null`, for
+ * showing next to a disabled submit/confirm button (issue #203) — `null`
+ * itself gives no way to tell "too many decimals" apart from "empty" or
+ * "zero". Returns `null` (no message) for an empty input, since that's the
+ * untouched/default state rather than a mistake to flag. */
+export function describeAmountError(input: string, decimals: number = TOKEN_DECIMALS): string | null {
+  const trimmed = input.trim();
+  if (trimmed === '') {
+    return null;
+  }
+
+  const match = /^(\d*)(?:\.(\d*))?$/.exec(trimmed);
+  if (!match || (match[1] === '' && (match[2] ?? '') === '')) {
+    return 'Enter a valid amount.';
+  }
+
+  const [, whole, fraction = ''] = match;
+  if (fraction.length > decimals) {
+    return `Use at most ${decimals} decimal places.`;
+  }
+
+  const raw = BigInt((whole || '0') + fraction.padEnd(decimals, '0'));
+  if (raw <= 0n) {
+    return 'Enter an amount greater than 0.';
+  }
+
+  return null;
 }
 
 const SECONDS_PER_MINUTE = 60;
