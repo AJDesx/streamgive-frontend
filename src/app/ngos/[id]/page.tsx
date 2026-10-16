@@ -7,7 +7,7 @@ import { Header } from '@/components/layout/Header';
 import { CopyLinkButton } from '@/components/common/CopyLinkButton';
 import { DonateQrCode } from '@/components/ngos/DonateQrCode';
 import { getNgo, getStreams, type NgoProfile, type Stream } from '@/lib/api';
-import { formatAmount, truncateAddress } from '@/lib/format';
+import { formatAmount, formatTokenAmount, truncateAddress } from '@/lib/format';
 import { explorerUrl } from '@/lib/stellar';
 
 const RECENT_STREAMS_LIMIT = 10;
@@ -176,7 +176,7 @@ export default async function NgoProfilePage({ params }: Props) {
                   {truncateAddress(stream.donor.address)}
                 </a>
                 <span className="text-gray-500 dark:text-gray-400">
-                  {formatAmount(stream.rate)} / second
+                  {formatTokenAmount(stream.rate, stream.tokenAddress)} / second
                 </span>
                 <span
                   className={

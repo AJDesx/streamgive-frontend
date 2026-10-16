@@ -1,3 +1,5 @@
+import { getNativeAssetAddress, getUsdcAssetAddress } from './stellar';
+
 // Every Stellar Asset Contract token (native XLM included) uses 7 decimal
 // places — fixed by the protocol, not something per-asset to look up.
 export const TOKEN_DECIMALS = 7;
@@ -36,6 +38,45 @@ export function formatAmount(raw: string, decimals: number = TOKEN_DECIMALS): st
 
   const formatted = fractionStr ? `${wholeStr}.${fractionStr}` : wholeStr;
   return isNegative ? `-${formatted}` : formatted;
+}
+
+/** Short display label for a token contract: "XLM" for the native asset,
+ * "USDC" for the configured USDC contract, and a shortened contract address
+ * for anything else (there is no symbol lookup for arbitrary tokens). */
+export function tokenSymbol(tokenAddress: string): string {
+  if (tokenAddress === getNativeAssetAddress()) {
+    return 'XLM';
+  }
+  if (tokenAddress === getUsdcAssetAddress()) {
+    return 'USDC';
+  }
+  return truncateAddress(tokenAddress);
+}
+
+/** `formatAmount` plus the token's symbol, so "100" can't be mistaken for
+ * the wrong asset (e.g. "100 XLM", "100 USDC", "100 CABC…WXYZ"). */
+export function formatTokenAmount(
+  raw: string,
+  tokenAddress: string,
+  decimals: number = TOKEN_DECIMALS,
+): string {
+  return `${formatAmount(raw, decimals)} ${tokenSymbol(tokenAddress)}`;
+}
+
+/** Sums raw amounts per token and formats each total with its symbol,
+ * joined by commas ("5 XLM, 2 USDC"). Amounts of different tokens are never
+ * added together. Returns the bare "0" for an empty list. */
+export function formatTokenTotals(entries: { tokenAddress: string; raw: bigint }[]): string {
+  const totals = new Map<string, bigint>();
+  for (const { tokenAddress, raw } of entries) {
+    totals.set(tokenAddress, (totals.get(tokenAddress) ?? 0n) + raw);
+  }
+  if (totals.size === 0) {
+    return '0';
+  }
+  return [...totals]
+    .map(([tokenAddress, raw]) => formatTokenAmount(raw.toString(), tokenAddress))
+    .join(', ');
 }
 
 /** Formats a raw i128 fee estimate (in stroops) for display next to a
@@ -81,7 +122,10 @@ export function parseAmount(input: string, decimals: number = TOKEN_DECIMALS): b
  * itself gives no way to tell "too many decimals" apart from "empty" or
  * "zero". Returns `null` (no message) for an empty input, since that's the
  * untouched/default state rather than a mistake to flag. */
-export function describeAmountError(input: string, decimals: number = TOKEN_DECIMALS): string | null {
+export function describeAmountError(
+  input: string,
+  decimals: number = TOKEN_DECIMALS,
+): string | null {
   const trimmed = input.trim();
   if (trimmed === '') {
     return null;

@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { CopyAddressButton } from '@/components/common/CopyAddressButton';
 import { WithdrawButton } from '@/components/ngoAdmin/WithdrawButton';
 import type { Stream } from '@/lib/api';
-import { formatAmount, truncateAddress } from '@/lib/format';
+import { formatTokenAmount, truncateAddress } from '@/lib/format';
 
 type StatusFilter = 'all' | 'active' | 'cancelled';
 type SortOption = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';
@@ -124,7 +124,8 @@ export function NgoAdminStreamList({
                   </div>
                   <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     {stream.status === 'ACTIVE' ? 'Active' : 'Cancelled'} · Balance{' '}
-                    {formatAmount(stream.balance)} · Withdrawn {formatAmount(stream.withdrawn)}
+                    {formatTokenAmount(stream.balance, stream.tokenAddress)} · Withdrawn{' '}
+                    {formatTokenAmount(stream.withdrawn, stream.tokenAddress)}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">

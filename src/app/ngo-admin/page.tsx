@@ -13,7 +13,7 @@ import { WithdrawalHistory } from '@/components/ngoAdmin/WithdrawalHistory';
 import { StreamDetailsModal } from '@/components/streams/StreamDetailsModal';
 import { useWallet } from '@/components/wallet/WalletProvider';
 import { getStreams, lookupNgoByAddress, type Ngo, type Stream } from '@/lib/api';
-import { formatAmount } from '@/lib/format';
+import { formatTokenTotals } from '@/lib/format';
 
 export default function NgoAdminPage() {
   const { address } = useWallet();
@@ -67,8 +67,14 @@ export default function NgoAdminPage() {
     void refresh();
   }, [refresh]);
 
-  const totalWithdrawn = streams.reduce((sum, s) => sum + BigInt(s.withdrawn), 0n);
-  const remainingBalance = streams.reduce((sum, s) => sum + (s.status === 'ACTIVE' ? BigInt(s.balance) : 0n), 0n);
+  const totalWithdrawn = formatTokenTotals(
+    streams.map((s) => ({ tokenAddress: s.tokenAddress, raw: BigInt(s.withdrawn) })),
+  );
+  const remainingBalance = formatTokenTotals(
+    streams
+      .filter((s) => s.status === 'ACTIVE')
+      .map((s) => ({ tokenAddress: s.tokenAddress, raw: BigInt(s.balance) })),
+  );
   const activeCount = streams.filter((s) => s.status === 'ACTIVE').length;
 
   return (
@@ -129,11 +135,11 @@ export default function NgoAdminPage() {
             <dl className="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-3">
               <div>
                 <dt className="text-sm text-gray-500 dark:text-gray-400">Total withdrawn</dt>
-                <dd className="text-lg font-semibold">{formatAmount(totalWithdrawn.toString())}</dd>
+                <dd className="text-lg font-semibold">{totalWithdrawn}</dd>
               </div>
               <div>
                 <dt className="text-sm text-gray-500 dark:text-gray-400">Remaining balance</dt>
-                <dd className="text-lg font-semibold">{formatAmount(remainingBalance.toString())}</dd>
+                <dd className="text-lg font-semibold">{remainingBalance}</dd>
               </div>
               <div>
                 <dt className="text-sm text-gray-500 dark:text-gray-400">Active streams</dt>

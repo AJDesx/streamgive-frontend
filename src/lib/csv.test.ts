@@ -27,7 +27,7 @@ describe('buildDonationHistoryCsv', () => {
     const [header, row] = csv.split('\n');
 
     expect(header).toBe('NGO,Token,Status,Committed,Withdrawn,Created');
-    expect(row).toBe('Test NGO,XLM,Active,0.7,0.2,1/15/2026');
+    expect(row).toBe('Test NGO,XLM,Active,0.7 XLM,0.2 XLM,1/15/2026');
   });
 
   it('labels non-native tokens by contract address and cancelled streams as Cancelled', () => {
@@ -36,14 +36,16 @@ describe('buildDonationHistoryCsv', () => {
     ]);
     const [, row] = csv.split('\n');
 
-    expect(row).toBe('Test NGO,CUSDCCONTRACT,Cancelled,0.7,0.2,1/15/2026');
+    expect(row).toBe('Test NGO,CUSDCCONTRACT,Cancelled,0.7 CUSD…RACT,0.2 CUSD…RACT,1/15/2026');
   });
 
   it('quotes fields containing a comma', () => {
-    const csv = buildDonationHistoryCsv([makeStream({ ngo: { id: 'ngo1', name: 'Hope, Inc.', ownerAddress: 'GOWNER' } })]);
+    const csv = buildDonationHistoryCsv([
+      makeStream({ ngo: { id: 'ngo1', name: 'Hope, Inc.', ownerAddress: 'GOWNER' } }),
+    ]);
     const [, row] = csv.split('\n');
 
-    expect(row).toBe('"Hope, Inc.",XLM,Active,0.7,0.2,1/15/2026');
+    expect(row).toBe('"Hope, Inc.",XLM,Active,0.7 XLM,0.2 XLM,1/15/2026');
   });
 
   it('returns just the header for no streams', () => {

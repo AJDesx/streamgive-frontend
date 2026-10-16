@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 
 import type { Stream } from '@/lib/api';
-import { formatAmount } from '@/lib/format';
+import { formatTokenAmount } from '@/lib/format';
 import { DONATION_VAULT_CONTRACT_ID, explorerUrl, getNativeAssetAddress } from '@/lib/stellar';
 
 function formatDate(iso: string): string {
@@ -166,15 +166,15 @@ export function StreamDetailsModal({ stream, onClose }: { stream: Stream; onClos
           )}
           <div className="flex items-center justify-between gap-4">
             <dt className="text-gray-500 dark:text-gray-400">Rate</dt>
-            <dd className="font-medium">{formatAmount(stream.rate)} / second</dd>
+            <dd className="font-medium">{formatTokenAmount(stream.rate, stream.tokenAddress)} / second</dd>
           </div>
           <div className="flex items-center justify-between gap-4">
             <dt className="text-gray-500 dark:text-gray-400">Balance</dt>
-            <dd className="font-medium">{formatAmount(stream.balance)}</dd>
+            <dd className="font-medium">{formatTokenAmount(stream.balance, stream.tokenAddress)}</dd>
           </div>
           <div className="flex items-center justify-between gap-4">
             <dt className="text-gray-500 dark:text-gray-400">Withdrawn</dt>
-            <dd className="font-medium">{formatAmount(stream.withdrawn)}</dd>
+            <dd className="font-medium">{formatTokenAmount(stream.withdrawn, stream.tokenAddress)}</dd>
           </div>
           <div className="flex items-center justify-between gap-4">
             <dt className="text-gray-500 dark:text-gray-400">Created</dt>

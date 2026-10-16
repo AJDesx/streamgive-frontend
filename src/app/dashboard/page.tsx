@@ -11,7 +11,7 @@ import { StreamDetailsModal } from '@/components/streams/StreamDetailsModal';
 import { useWallet } from '@/components/wallet/WalletProvider';
 import { getStreams, type Stream } from '@/lib/api';
 import { buildDonationHistoryCsv } from '@/lib/csv';
-import { formatAmount, formatRemainingDuration } from '@/lib/format';
+import { formatRemainingDuration, formatTokenAmount, formatTokenTotals } from '@/lib/format';
 
 // Client-side pagination over the already-fetched list — same interim
 // approach as NgoExplorer, until the backend exposes real limit/offset
@@ -51,12 +51,12 @@ function LiveBalance({ stream }: { stream: Stream }) {
   }, [stream.balance, stream.rate, stream.updatedAt, stream.status]);
 
   if (stream.status !== 'ACTIVE') {
-    return <>{formatAmount(stream.balance)}</>;
+    return <>{formatTokenAmount(stream.balance, stream.tokenAddress)}</>;
   }
 
   return (
     <span title="Estimated current balance based on stream rate" className="border-b border-dotted border-gray-400 cursor-help">
-      {formatAmount(estimatedBalance.toString())} (est)
+      {formatTokenAmount(estimatedBalance.toString(), stream.tokenAddress)} (est)
     </span>
   );
 }
@@ -198,9 +198,11 @@ export default function DashboardPage() {
     setStreams((prev) => prev.map((s) => (s.id === streamId ? { ...s, ...patch } : s)));
   }, []);
 
-  const totalCommitted = streams.reduce(
-    (sum, s) => sum + BigInt(s.balance) + BigInt(s.withdrawn),
-    0n,
+  const totalCommitted = formatTokenTotals(
+    streams.map((s) => ({
+      tokenAddress: s.tokenAddress,
+      raw: BigInt(s.balance) + BigInt(s.withdrawn),
+    })),
   );
   const activeCount = streams.filter((s) => s.status === 'ACTIVE').length;
   const trimmedSearchQuery = searchQuery.trim();
@@ -313,7 +315,7 @@ export default function DashboardPage() {
                 <div>
                   <dt className="text-sm text-gray-500 dark:text-gray-400">Total committed</dt>
                   <dd className="text-lg font-semibold">
-                    {formatAmount(totalCommitted.toString())}
+                    {totalCommitted}
                   </dd>
                 </div>
                 <div>
@@ -409,7 +411,7 @@ export default function DashboardPage() {
                       </Link>
                       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                         {stream.status === 'ACTIVE' ? 'Active' : 'Cancelled'} · Balance{' '}
-                        <LiveBalance stream={stream} /> · Withdrawn {formatAmount(stream.withdrawn)}
+                        <LiveBalance stream={stream} /> · Withdrawn {formatTokenAmount(stream.withdrawn, stream.tokenAddress)}
                         {stream.status === 'ACTIVE' && formatRemainingDuration(stream.balance, stream.rate)
                           ? ` · ${formatRemainingDuration(stream.balance, stream.rate)}`
                           : ''}
