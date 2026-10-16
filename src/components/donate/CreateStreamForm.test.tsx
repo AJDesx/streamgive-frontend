@@ -35,6 +35,10 @@ vi.mock('@/components/wallet/WalletProvider', () => ({
   }),
 }));
 
+vi.mock('@/components/toast/ToastProvider', () => ({
+  useToast: () => ({ showToast: vi.fn() }),
+}));
+
 const mockGetTokenBalance = vi.fn();
 const mockGetTokenDecimals = vi.fn();
 
@@ -44,6 +48,7 @@ vi.mock('@/lib/stellar', () => ({
   getUsdcAssetAddress: () => USDC_TOKEN_ADDRESS,
   getTokenBalance: (...args: unknown[]) => mockGetTokenBalance(...args),
   getTokenDecimals: (...args: unknown[]) => mockGetTokenDecimals(...args),
+  txToastAction: vi.fn(),
 }));
 
 const mockCreateStream = vi.fn();

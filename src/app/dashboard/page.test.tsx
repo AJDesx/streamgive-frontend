@@ -36,6 +36,10 @@ vi.mock('@/lib/csv', () => ({
   buildDonationHistoryCsv: vi.fn(),
 }));
 
+vi.mock('@/components/dashboard/StreamControls', () => ({
+  StreamControls: () => null,
+}));
+
 describe('DashboardPage', () => {
   it('shows empty state when donor has no streams', async () => {
     vi.spyOn(WalletProviderMod, 'useWallet').mockReturnValue({
@@ -256,6 +260,112 @@ describe('DashboardPage', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+  });
+
+  describe('sort options', () => {
+    const streamOldest = makeStream({
+      id: 's1',
+      onChainId: '101',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      balance: '100',
+      withdrawn: '0', // committed: 100
+      rate: '1', // 100s remaining
+      ngo: { id: 'ngo-1', name: 'NGO Jan (Oldest)', ownerAddress: 'G1' },
+    });
+    const streamMiddle = makeStream({
+      id: 's2',
+      onChainId: '202',
+      createdAt: '2026-02-01T00:00:00.000Z',
+      balance: '500',
+      withdrawn: '1500', // committed: 2000 (largest)
+      rate: '50', // 10s remaining (ending soonest)
+      ngo: { id: 'ngo-2', name: 'NGO Feb (Largest & Ending Soonest)', ownerAddress: 'G2' },
+    });
+    const streamNewest = makeStream({
+      id: 's3',
+      onChainId: '303',
+      createdAt: '2026-03-01T00:00:00.000Z',
+      balance: '300',
+      withdrawn: '200', // committed: 500
+      rate: '2', // 150s remaining
+      ngo: { id: 'ngo-3', name: 'NGO Mar (Newest)', ownerAddress: 'G3' },
+    });
+
+    function setupStreams() {
+      vi.spyOn(WalletProviderMod, 'useWallet').mockReturnValue({
+        address: 'G123',
+        connecting: false,
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+        signTransaction: vi.fn(),
+        signMessage: vi.fn(),
+      });
+      vi.spyOn(ApiMod, 'getStreams').mockResolvedValue([streamOldest, streamMiddle, streamNewest]);
+    }
+
+    it('sorts by newest by default', async () => {
+      setupStreams();
+      render(<DashboardPage />);
+
+      await waitFor(() => expect(screen.getAllByRole('link', { name: /NGO / })).toHaveLength(3));
+      const names = screen.getAllByRole('link', { name: /NGO / }).map((el) => el.textContent);
+      expect(names).toEqual([
+        'NGO Mar (Newest)',
+        'NGO Feb (Largest & Ending Soonest)',
+        'NGO Jan (Oldest)',
+      ]);
+    });
+
+    it('sorts by oldest', async () => {
+      setupStreams();
+      const user = userEvent.setup();
+      render(<DashboardPage />);
+
+      await waitFor(() => expect(screen.getAllByRole('link', { name: /NGO / })).toHaveLength(3));
+      const sortSelect = screen.getByLabelText(/sort by/i);
+      await user.selectOptions(sortSelect, 'oldest');
+
+      const names = screen.getAllByRole('link', { name: /NGO / }).map((el) => el.textContent);
+      expect(names).toEqual([
+        'NGO Jan (Oldest)',
+        'NGO Feb (Largest & Ending Soonest)',
+        'NGO Mar (Newest)',
+      ]);
+    });
+
+    it('sorts by largest committed', async () => {
+      setupStreams();
+      const user = userEvent.setup();
+      render(<DashboardPage />);
+
+      await waitFor(() => expect(screen.getAllByRole('link', { name: /NGO / })).toHaveLength(3));
+      const sortSelect = screen.getByLabelText(/sort by/i);
+      await user.selectOptions(sortSelect, 'largest-committed');
+
+      const names = screen.getAllByRole('link', { name: /NGO / }).map((el) => el.textContent);
+      expect(names).toEqual([
+        'NGO Feb (Largest & Ending Soonest)', // 2000 committed
+        'NGO Mar (Newest)', // 500 committed
+        'NGO Jan (Oldest)', // 100 committed
+      ]);
+    });
+
+    it('sorts by ending soonest', async () => {
+      setupStreams();
+      const user = userEvent.setup();
+      render(<DashboardPage />);
+
+      await waitFor(() => expect(screen.getAllByRole('link', { name: /NGO / })).toHaveLength(3));
+      const sortSelect = screen.getByLabelText(/sort by/i);
+      await user.selectOptions(sortSelect, 'ending-soonest');
+
+      const names = screen.getAllByRole('link', { name: /NGO / }).map((el) => el.textContent);
+      expect(names).toEqual([
+        'NGO Feb (Largest & Ending Soonest)', // 10s remaining
+        'NGO Jan (Oldest)', // 100s remaining
+        'NGO Mar (Newest)', // 150s remaining
+      ]);
     });
   });
 });

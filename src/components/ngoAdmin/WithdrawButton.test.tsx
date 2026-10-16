@@ -120,6 +120,24 @@ describe('WithdrawButton', () => {
     expect(onWithdrawn).toHaveBeenCalled();
   });
 
+  it('includes a View transaction action link when transaction hash is returned', async () => {
+    signAndSend.mockResolvedValue({ hash: 'tx12345' });
+    const onWithdrawn = vi.fn();
+    const user = userEvent.setup();
+
+    render(<WithdrawButton streamOnChainId="1" onWithdrawn={onWithdrawn} />);
+    await startWithdraw(user);
+
+    expect(showToast).toHaveBeenCalledWith(
+      'success',
+      expect.stringMatching(/withdrawal submitted/i),
+      expect.objectContaining({
+        label: 'View transaction',
+        url: expect.stringContaining('/tx/tx12345'),
+      }),
+    );
+  });
+
   it('shows an error toast and does not call onWithdrawn when the transaction is rejected', async () => {
     signAndSend.mockRejectedValue(new Error('User declined access'));
     const onWithdrawn = vi.fn();

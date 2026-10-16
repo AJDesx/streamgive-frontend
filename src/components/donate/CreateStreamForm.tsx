@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { ConnectWalletPrompt } from '@/components/common/ConnectWalletPrompt';
+import { useToast } from '@/components/toast/ToastProvider';
 import { useWallet } from '@/components/wallet/WalletProvider';
 import { useDonationVaultClient } from '@/lib/donationVaultClient';
 import {
@@ -19,6 +20,7 @@ import {
   getTokenBalance,
   getTokenDecimals,
   getUsdcAssetAddress,
+  txToastAction,
 } from '@/lib/stellar';
 
 const DURATIONS = [
@@ -54,6 +56,7 @@ export function CreateStreamForm({
   const router = useRouter();
   const { address } = useWallet();
   const { client, ready } = useDonationVaultClient();
+  const { showToast } = useToast();
 
   const [tokenChoice, setTokenChoice] = useState<TokenChoice>('native');
   const [customToken, setCustomToken] = useState('');
@@ -257,11 +260,12 @@ export function CreateStreamForm({
       // signAndSend() goes on to trigger the wallet's signing prompt.
       setEstimatedFee(formatEstimatedFee(tx.built?.fee));
 
-      const { result } = await tx.signAndSend();
-      const newStreamId = String(result);
+      const sent = await tx.signAndSend();
+      const newStreamId = String(sent?.result ?? '');
 
       setStreamId(newStreamId);
       setSubmitState('success');
+      showToast('success', `Stream #${newStreamId} created!`, txToastAction(sent, tx));
       setAmount('');
       setDurationSeconds(DURATIONS[1].seconds);
       setTokenChoice('native');

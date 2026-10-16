@@ -53,6 +53,42 @@ size, leave enough height for the full form (amount, token, duration, and
 the connect/submit button) — too short a frame means the form scrolls
 inside itself, which reads as broken on most host pages.
 
+## Automatic resizing (postMessage)
+
+The widget's height changes dynamically with the success message, balance warnings, and validation errors. To prevent scrollbars or empty gaps, the widget automatically posts a `streamgive:resize` message to the parent window whenever its content height changes:
+
+```json
+{
+  "type": "streamgive:resize",
+  "height": 520
+}
+```
+
+### Listener snippet
+
+Add an `id` to your `<iframe>` (or reference it directly) and listen for `message` events:
+
+```html
+<iframe
+  id="streamgive-widget"
+  src="https://app.streamgive.example/embed/YOUR_NGO_ID"
+  width="400"
+  height="600"
+  style="border:0"
+></iframe>
+
+<script>
+  window.addEventListener('message', function (event) {
+    if (event.data && event.data.type === 'streamgive:resize' && typeof event.data.height === 'number') {
+      var iframe = document.getElementById('streamgive-widget');
+      if (iframe) {
+        iframe.style.height = event.data.height + 'px';
+      }
+    }
+  });
+</script>
+```
+
 ## Security headers
 
 Every route in this app sends `X-Frame-Options: DENY` **except** `/embed/*`,

@@ -6,6 +6,7 @@ import { useToast } from '@/components/toast/ToastProvider';
 import { useWallet } from '@/components/wallet/WalletProvider';
 import { useDonationVaultClient } from '@/lib/donationVaultClient';
 import { formatAmount, formatEstimatedFee } from '@/lib/format';
+import { txToastAction } from '@/lib/stellar';
 
 type Step = 'idle' | 'checking' | 'confirming' | 'withdrawing';
 
@@ -55,8 +56,12 @@ export function WithdrawButton({
     try {
       const tx = await client.withdraw({ stream_id: BigInt(streamOnChainId) });
       setEstimatedFee(formatEstimatedFee(tx.built?.fee));
-      await tx.signAndSend();
-      showToast('success', 'Withdrawal submitted — may take a few seconds to show below.');
+      const sent = await tx.signAndSend();
+      showToast(
+        'success',
+        'Withdrawal submitted — may take a few seconds to show below.',
+        txToastAction(sent, tx),
+      );
       onWithdrawn();
     } catch (err) {
       showToast('error', err instanceof Error ? err.message : 'Something went wrong.');

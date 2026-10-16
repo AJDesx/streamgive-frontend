@@ -37,6 +37,16 @@ describe('explorerUrl', () => {
     );
   });
 
+  it('links to a testnet transaction', async () => {
+    const { explorerUrl } = await freshStellar(TESTNET_PASSPHRASE);
+    expect(explorerUrl('transaction', 'TXHASH123')).toBe(
+      'https://stellar.expert/explorer/testnet/tx/TXHASH123',
+    );
+    expect(explorerUrl('tx', 'TXHASH123')).toBe(
+      'https://stellar.expert/explorer/testnet/tx/TXHASH123',
+    );
+  });
+
   it('links to a mainnet account', async () => {
     const { explorerUrl } = await freshStellar(MAINNET_PASSPHRASE);
     expect(explorerUrl('account', 'GADDRESS')).toBe(
@@ -48,6 +58,16 @@ describe('explorerUrl', () => {
     const { explorerUrl } = await freshStellar(MAINNET_PASSPHRASE);
     expect(explorerUrl('contract', 'CADDRESS')).toBe(
       'https://stellar.expert/explorer/public/contract/CADDRESS',
+    );
+  });
+
+  it('links to a mainnet transaction', async () => {
+    const { explorerUrl } = await freshStellar(MAINNET_PASSPHRASE);
+    expect(explorerUrl('transaction', 'TXHASH123')).toBe(
+      'https://stellar.expert/explorer/public/tx/TXHASH123',
+    );
+    expect(explorerUrl('tx', 'TXHASH123')).toBe(
+      'https://stellar.expert/explorer/public/tx/TXHASH123',
     );
   });
 });
