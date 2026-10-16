@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -36,12 +36,14 @@ vi.mock('@/components/wallet/WalletProvider', () => ({
 }));
 
 const mockGetTokenBalance = vi.fn();
+const mockGetTokenDecimals = vi.fn();
 
 vi.mock('@/lib/stellar', () => ({
   DONATION_VAULT_CONTRACT_ID: 'CVAULTFAKE',
   getNativeAssetAddress: () => NATIVE_TOKEN_ADDRESS,
   getUsdcAssetAddress: () => USDC_TOKEN_ADDRESS,
   getTokenBalance: (...args: unknown[]) => mockGetTokenBalance(...args),
+  getTokenDecimals: (...args: unknown[]) => mockGetTokenDecimals(...args),
 }));
 
 const mockCreateStream = vi.fn();
@@ -56,6 +58,8 @@ describe('CreateStreamForm', () => {
     mockPush.mockReset();
     mockGetTokenBalance.mockReset();
     mockGetTokenBalance.mockResolvedValue('50000000000'); // 5,000 in raw units
+    mockGetTokenDecimals.mockReset();
+    mockGetTokenDecimals.mockResolvedValue(7);
     vi.mocked(useDonationVaultClient).mockReturnValue({
       client: { create_stream: mockCreateStream } as never,
       ready: true,
@@ -115,7 +119,9 @@ describe('CreateStreamForm', () => {
     expect(submit).toBeDisabled();
 
     await user.type(screen.getByPlaceholderText(/token contract address/i), CUSTOM_TOKEN_ADDRESS);
-    expect(submit).not.toBeDisabled();
+    // Entering a well-formed address kicks off a decimals() lookup (#204);
+    // the button only re-enables once that settles.
+    await waitFor(() => expect(submit).not.toBeDisabled());
   });
 
   it('flags an amount too small to produce a positive per-second rate', async () => {
@@ -173,7 +179,9 @@ describe('CreateStreamForm', () => {
     // Switch to custom and type an address so the button is enabled.
     await user.click(screen.getByLabelText(/custom asset/i));
     await user.type(screen.getByPlaceholderText(/token contract address/i), CUSTOM_TOKEN_ADDRESS);
-    expect(screen.getByRole('button', { name: /review & sign/i })).not.toBeDisabled();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /review & sign/i })).not.toBeDisabled(),
+    );
 
     // Switch back to native XLM — the custom address no longer matters.
     await user.click(screen.getByLabelText(/xlm \(native\)/i));
@@ -388,5 +396,67 @@ describe('CreateStreamForm', () => {
 
     expect(screen.queryByText(/exceeds your wallet balance/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /review & sign/i })).not.toBeDisabled();
+  });
+
+  describe('amount validation message (#203)', () => {
+    it('explains why more than 7 decimal places is rejected', async () => {
+      const user = userEvent.setup();
+      render(<CreateStreamForm ngoAddress={NGO_ADDRESS} />);
+
+      await user.type(screen.getByPlaceholderText('100'), '1.23456789');
+
+      expect(screen.getByText('Use at most 7 decimal places.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /review & sign/i })).toBeDisabled();
+    });
+  });
+
+  describe('custom token decimals (#204)', () => {
+    it("scales a custom token's deposit using its own decimals instead of assuming 7", async () => {
+      mockGetTokenDecimals.mockResolvedValue(6);
+      mockCreateStream.mockResolvedValue({
+        signAndSend: vi.fn().mockResolvedValue({ result: 42n }),
+      });
+
+      const user = userEvent.setup();
+      render(<CreateStreamForm ngoAddress={NGO_ADDRESS} />);
+
+      await user.click(screen.getByLabelText(/custom asset/i));
+      await user.type(screen.getByPlaceholderText(/token contract address/i), CUSTOM_TOKEN_ADDRESS);
+      await user.type(screen.getByPlaceholderText('100'), '100');
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /review & sign/i })).not.toBeDisabled(),
+      );
+
+      await user.click(screen.getByRole('button', { name: /review & sign/i }));
+      await user.click(await screen.findByRole('button', { name: /confirm & sign/i }));
+
+      await screen.findByText(/stream started/i);
+
+      // At the token's real 6 decimals, 100 is 100_000_000 raw units -- not
+      // the 1_000_000_000 the hard-coded 7-decimal TOKEN_DECIMALS would have
+      // produced, which is exactly the mis-scaled deposit issue #204 reports.
+      expect(mockCreateStream).toHaveBeenCalledWith({
+        donor: DONOR_ADDRESS,
+        ngo: NGO_ADDRESS,
+        token: CUSTOM_TOKEN_ADDRESS,
+        deposit: 100_000_000n,
+        rate: 100_000_000n / (30n * 24n * 60n * 60n),
+      });
+    });
+
+    it("blocks submission with a clear warning when a custom token's decimals can't be read", async () => {
+      mockGetTokenDecimals.mockResolvedValue(null);
+
+      const user = userEvent.setup();
+      render(<CreateStreamForm ngoAddress={NGO_ADDRESS} />);
+
+      await user.click(screen.getByLabelText(/custom asset/i));
+      await user.type(screen.getByPlaceholderText(/token contract address/i), CUSTOM_TOKEN_ADDRESS);
+      await user.type(screen.getByPlaceholderText('100'), '100');
+
+      expect(await screen.findByText(/couldn't read this token's decimals/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /review & sign/i })).toBeDisabled();
+      expect(mockCreateStream).not.toHaveBeenCalled();
+    });
   });
 });

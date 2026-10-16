@@ -6,11 +6,18 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ConnectWalletPrompt } from '@/components/common/ConnectWalletPrompt';
 import { useWallet } from '@/components/wallet/WalletProvider';
 import { useDonationVaultClient } from '@/lib/donationVaultClient';
-import { formatAmount, formatEstimatedFee, parseAmount, TOKEN_DECIMALS } from '@/lib/format';
+import {
+  describeAmountError,
+  formatAmount,
+  formatEstimatedFee,
+  parseAmount,
+  TOKEN_DECIMALS,
+} from '@/lib/format';
 import {
   DONATION_VAULT_CONTRACT_ID,
   getNativeAssetAddress,
   getTokenBalance,
+  getTokenDecimals,
   getUsdcAssetAddress,
 } from '@/lib/stellar';
 
@@ -64,9 +71,20 @@ export function CreateStreamForm({
   const [confirmationEndDate, setConfirmationEndDate] = useState<Date | null>(null);
   const [walletBalance, setWalletBalance] = useState<string | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
+  // Native XLM and USDC are both Stellar Asset Contracts, which always use 7
+  // decimals, but a custom token can declare any value here — tokenDecimals
+  // is that token's real scale once looked up (issue #204). null means
+  // either "not a custom token" (no lookup needed, see the effect below) or
+  // "lookup still pending/failed" for one that is; decimalsError/Loading
+  // tell those two apart so the UI can block submission with a clear reason
+  // rather than silently falling back to the wrong scale.
+  const [tokenDecimals, setTokenDecimals] = useState<number | null>(TOKEN_DECIMALS);
+  const [decimalsLoading, setDecimalsLoading] = useState(false);
+  const [decimalsError, setDecimalsError] = useState(false);
 
-  const depositRaw = parseAmount(amount);
+  const depositRaw = parseAmount(amount, tokenDecimals ?? TOKEN_DECIMALS);
   const isAmountValid = depositRaw !== null;
+  const amountError = describeAmountError(amount, tokenDecimals ?? TOKEN_DECIMALS);
 
   // Integer division truncates: a deposit that doesn't divide evenly by the
   // duration leaves a remainder the per-second rate can't carry (issue
@@ -112,9 +130,55 @@ export function CreateStreamForm({
     isRateValid &&
     isTokenValid &&
     !insufficientBalance &&
+    !decimalsLoading &&
+    !decimalsError &&
     submitState !== 'signing' &&
     submitState !== 'confirming' &&
     ready;
+
+  // Looks up the real decimals for a custom token (issue #204) — native XLM
+  // and USDC are both Stellar Asset Contracts, which are always 7, so only
+  // the 'custom' path needs a network round trip. Runs on selectedTokenAddress
+  // rather than customToken directly so a half-typed address (still failing
+  // the StrKey format check) doesn't fire a lookup against a non-address.
+  useEffect(() => {
+    if (tokenChoice !== 'custom') {
+      setTokenDecimals(TOKEN_DECIMALS);
+      setDecimalsLoading(false);
+      setDecimalsError(false);
+      return;
+    }
+    if (!selectedTokenAddress) {
+      setTokenDecimals(null);
+      setDecimalsLoading(false);
+      setDecimalsError(false);
+      return;
+    }
+
+    let cancelled = false;
+    setTokenDecimals(null);
+    setDecimalsError(false);
+    setDecimalsLoading(true);
+
+    getTokenDecimals(selectedTokenAddress)
+      .then((decimals) => {
+        if (cancelled) return;
+        if (decimals === null) {
+          setDecimalsError(true);
+        } else {
+          setTokenDecimals(decimals);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setDecimalsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tokenChoice, selectedTokenAddress]);
 
   useEffect(() => {
     if (!address || !selectedTokenAddress) {
@@ -292,6 +356,17 @@ export function CreateStreamForm({
                 or digits 2–7.
               </p>
             )}
+            {isTokenValid && decimalsLoading && (
+              <p role="status" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Checking this token&apos;s decimals…
+              </p>
+            )}
+            {isTokenValid && decimalsError && (
+              <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+                Couldn&apos;t read this token&apos;s decimals — it may not be a valid token
+                contract. Streaming it is blocked until this can be confirmed.
+              </p>
+            )}
           </>
         )}
       </fieldset>
@@ -305,8 +380,14 @@ export function CreateStreamForm({
           value={amount}
           onChange={(event) => setAmount(event.target.value)}
           placeholder="100"
-          aria-invalid={isAmountValid && !isRateValid || undefined}
-          aria-describedby={isAmountValid && !isRateValid ? 'amount-error' : undefined}
+          aria-invalid={amountError !== null || (isAmountValid && !isRateValid) || undefined}
+          aria-describedby={
+            amountError !== null
+              ? 'amount-format-error'
+              : isAmountValid && !isRateValid
+                ? 'amount-error'
+                : undefined
+          }
           className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:border-gray-700 dark:bg-gray-900 dark:focus-visible:ring-teal-400"
         />
         <div className="mt-2 flex flex-wrap gap-2">
@@ -322,11 +403,16 @@ export function CreateStreamForm({
             </button>
           ))}
         </div>
+        {amountError !== null && (
+          <p id="amount-format-error" className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+            {amountError}
+          </p>
+        )}
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
           {balanceLoading
             ? 'Checking wallet balance…'
             : walletBalance !== null
-              ? `Wallet balance: ${formatAmount(walletBalance)}`
+              ? `Wallet balance: ${formatAmount(walletBalance, tokenDecimals ?? TOKEN_DECIMALS)}`
               : null}
         </p>
         {insufficientBalance && (
@@ -354,16 +440,17 @@ export function CreateStreamForm({
       {isAmountValid && rateRaw !== null && (
         <p id={!isRateValid ? 'amount-error' : undefined} className="text-sm text-gray-500 dark:text-gray-400">
           {isRateValid
-            ? `That's roughly ${(Number(rateRaw) / 10 ** TOKEN_DECIMALS).toFixed(7)} per second.`
+            ? `That's roughly ${(Number(rateRaw) / 10 ** (tokenDecimals ?? TOKEN_DECIMALS)).toFixed(tokenDecimals ?? TOKEN_DECIMALS)} per second.`
             : 'That amount is too small to stream over this duration — try a shorter one.'}
         </p>
       )}
 
       {isRateValid && leftoverRaw !== null && leftoverRaw > 0n && effectiveStreamedRaw !== null && (
         <p className="text-sm text-amber-600 dark:text-amber-400">
-          Only {formatAmount(effectiveStreamedRaw.toString())} of your deposit will stream out at
-          this rate; the remaining {formatAmount(leftoverRaw.toString())} stays in the stream&apos;s
-          balance until you cancel or top up.
+          Only {formatAmount(effectiveStreamedRaw.toString(), tokenDecimals ?? TOKEN_DECIMALS)} of
+          your deposit will stream out at this rate; the remaining{' '}
+          {formatAmount(leftoverRaw.toString(), tokenDecimals ?? TOKEN_DECIMALS)} stays in the
+          stream&apos;s balance until you cancel or top up.
         </p>
       )}
 
@@ -388,7 +475,9 @@ export function CreateStreamForm({
             ? 'Reviewing…'
             : !ready
               ? 'Preparing contract…'
-              : 'Review & Sign'}
+              : decimalsLoading
+                ? 'Checking token…'
+                : 'Review & Sign'}
       </button>
 
       {submitState === 'confirming' && confirmationEndDate && (
@@ -397,6 +486,7 @@ export function CreateStreamForm({
           tokenLabel={TOKEN_LABELS[tokenChoice]}
           amount={amount}
           rateRaw={rateRaw}
+          decimals={tokenDecimals ?? TOKEN_DECIMALS}
           durationLabel={durationLabel}
           effectiveEndDate={confirmationEndDate}
           onConfirm={() => void handleConfirm()}
@@ -423,6 +513,7 @@ function ConfirmDonationSummary({
   tokenLabel,
   amount,
   rateRaw,
+  decimals,
   durationLabel,
   effectiveEndDate,
   onConfirm,
@@ -432,6 +523,7 @@ function ConfirmDonationSummary({
   tokenLabel: string;
   amount: string;
   rateRaw: bigint | null;
+  decimals: number;
   durationLabel: string;
   effectiveEndDate: Date;
   onConfirm: () => void;
@@ -462,7 +554,7 @@ function ConfirmDonationSummary({
   }, [onCancel]);
 
   const perSecondRate =
-    rateRaw !== null ? `${(Number(rateRaw) / 10 ** TOKEN_DECIMALS).toFixed(7)} / second` : '—';
+    rateRaw !== null ? `${(Number(rateRaw) / 10 ** decimals).toFixed(decimals)} / second` : '—';
 
   return (
     <div
