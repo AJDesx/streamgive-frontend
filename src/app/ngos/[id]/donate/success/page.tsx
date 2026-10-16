@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import { CopyLinkButton } from '@/components/common/CopyLinkButton';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
-import { getNgo, type NgoProfile } from '@/lib/api';
+import { getNgo, getStreams, type NgoProfile } from '@/lib/api';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -50,6 +50,15 @@ export default async function DonateSuccessPage({ params, searchParams }: Props)
 
   const ngoName = ngo.name;
 
+  // streamId is a client-supplied query param, not something to trust and
+  // echo back directly (issue #215) -- confirm it actually names one of
+  // this NGO's streams before the confirmation text claims it's active, so
+  // a crafted link can't fabricate a confirmation for a stream that was
+  // never created.
+  const streams = await getStreams({ ngo: id }).catch(() => []);
+  const confirmedStreamId =
+    streamId && streams.some((stream) => stream.onChainId === streamId) ? streamId : null;
+
   return (
     <>
       <Header />
@@ -57,8 +66,8 @@ export default async function DonateSuccessPage({ params, searchParams }: Props)
         <div className="max-w-md rounded-lg border border-green-200 bg-green-50 p-6 dark:border-green-900 dark:bg-green-950">
           <p className="font-medium text-green-800 dark:text-green-300">Stream started!</p>
           <p className="mt-1 text-sm text-green-700 dark:text-green-400">
-            {streamId
-              ? `Stream #${streamId} is now active, streaming to ${ngoName}.`
+            {confirmedStreamId
+              ? `Stream #${confirmedStreamId} is now active, streaming to ${ngoName}.`
               : `Your stream to ${ngoName} is now active.`}
           </p>
         </div>

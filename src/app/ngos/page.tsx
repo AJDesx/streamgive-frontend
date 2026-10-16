@@ -19,8 +19,18 @@ export default async function NgosPage() {
     const list = await getNgos();
     // No aggregate stats on the list endpoint — fetch each profile for its
     // stats. Same N+1 tradeoff already accepted on the platform impact page.
-    const profiles = await Promise.all(list.map((ngo) => getNgo(ngo.id)));
-    ngos = profiles.filter((profile): profile is NgoProfile => profile !== null);
+    //
+    // allSettled, not all: one NGO's profile 5xx-ing or timing out must not
+    // blank out the entire explorer (issue #213) — the rest of the list
+    // still loaded fine and should still render.
+    const results = await Promise.allSettled(list.map((ngo) => getNgo(ngo.id)));
+    ngos = results
+      .filter(
+        (result): result is PromiseFulfilledResult<NgoProfile | null> =>
+          result.status === 'fulfilled',
+      )
+      .map((result) => result.value)
+      .filter((profile): profile is NgoProfile => profile !== null);
   } catch {
     loadError = true;
   }
