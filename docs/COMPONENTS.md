@@ -7,8 +7,11 @@ and isn't repeated here — this covers the reusable pieces those pages render.
 ```
 src/components/
 ├── common/
+│   ├── ConnectWalletPrompt.tsx  — "Please connect your wallet" card shown in place of a protected page/form's content.
 │   ├── CopyAddressButton.tsx    — Copies a full address to the clipboard, showing a brief label change as confirmation.
-│   └── CopyLinkButton.tsx       — Copies the current page URL to the clipboard, with the same confirmation style.
+│   ├── CopyLinkButton.tsx       — Copies the current page URL to the clipboard, with the same confirmation style.
+│   ├── EnvironmentBanner.tsx    — Persistent banner shown on every page whenever the app isn't pointed at mainnet.
+│   └── RouteProgressBar.tsx     — Top-of-page progress indicator shown during route transitions.
 ├── dashboard/
 │   └── StreamControls.tsx       — Donor controls for an active stream: top up, modify the rate, or cancel it.
 ├── donate/
@@ -19,11 +22,15 @@ src/components/
 ├── layout/
 │   ├── Footer.tsx               — Site-wide footer with links to GitHub and the docs repo.
 │   ├── Header.tsx                — Site-wide nav bar: logo, page links, wallet connect button, mobile menu.
-│   └── Logo.tsx                  — The StreamGive mark as an inline SVG.
+│   ├── Logo.tsx                  — The StreamGive mark as an inline SVG.
+│   └── ThemeToggle.tsx           — Button that overrides the system color scheme and toggles light/dark mode.
 ├── ngoAdmin/
 │   ├── EmbedSnippet.tsx         — Generates the iframe embed snippet an NGO pastes into their own site, with size presets.
-│   └── WithdrawButton.tsx       — Lets an NGO withdraw the available balance from one of its streams.
+│   ├── NgoAdminStreamList.tsx   — Filterable, sortable list of an NGO's incoming streams, with per-stream withdraw/details actions.
+│   ├── WithdrawButton.tsx       — Lets an NGO withdraw the available balance from one of its streams.
+│   └── WithdrawalHistory.tsx    — Past withdrawal transactions for an NGO, for reconciling against what's actually been pulled out.
 ├── ngos/
+│   ├── DonateQrCode.tsx         — QR code linking to an NGO's donate page, with a PNG download link for offline/print sharing.
 │   ├── NgoCardSkeleton.tsx      — Loading placeholder matching the shape of a rendered NGO card.
 │   └── NgoExplorer.tsx          — Searchable, sortable, paginated grid of verified NGOs.
 ├── streams/
