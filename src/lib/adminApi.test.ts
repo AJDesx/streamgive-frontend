@@ -111,3 +111,310 @@ describe('admin request signing', () => {
     expect(signMessage).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('listNgoApplications', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('returns the applications array from the paginated envelope', async () => {
+    const { listNgoApplications } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+
+    const application = {
+      id: 'app-1',
+      ownerAddress: ADDRESS,
+      name: 'Test NGO',
+      description: 'Desc',
+      website: null,
+      contactEmail: 'test@example.com',
+      country: null,
+      status: 'PENDING' as const,
+      reviewNote: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    };
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({ applications: [application], total: 1, limit: 100, offset: 0 }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        ),
+      ),
+    );
+
+    const result = await listNgoApplications(ADDRESS, signMessage);
+    expect(result).toEqual([application]);
+  });
+
+  it('includes the status query param when provided', async () => {
+    const { listNgoApplications } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ applications: [], total: 0, limit: 100, offset: 0 }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listNgoApplications(ADDRESS, signMessage, 'APPROVED');
+
+    const calledUrl = (fetchMock.mock.calls[0][0] as string);
+    expect(calledUrl).toContain('status=APPROVED');
+  });
+
+  it('omits the status query param when not provided', async () => {
+    const { listNgoApplications } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ applications: [], total: 0, limit: 100, offset: 0 }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await listNgoApplications(ADDRESS, signMessage);
+
+    const calledUrl = (fetchMock.mock.calls[0][0] as string);
+    expect(calledUrl).not.toContain('status=');
+  });
+
+  it('throws when the response body is a bare array instead of an envelope', async () => {
+    const { listNgoApplications } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
+      ),
+    );
+
+    await expect(listNgoApplications(ADDRESS, signMessage)).rejects.toThrow(
+      /expected an \{ applications: \[.*\] \} envelope/i,
+    );
+  });
+
+  it('throws when the response body is missing the applications field', async () => {
+    const { listNgoApplications } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ total: 0 }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
+      ),
+    );
+
+    await expect(listNgoApplications(ADDRESS, signMessage)).rejects.toThrow(
+      /expected an \{ applications: \[.*\] \} envelope/i,
+    );
+  });
+
+  it('throws when the response is not ok', async () => {
+    const { listNgoApplications } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 })),
+      ),
+    );
+
+    await expect(listNgoApplications(ADDRESS, signMessage)).rejects.toThrow(/403/);
+  });
+});
+
+describe('reviewNgoApplication', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const reviewedApplication = {
+    id: 'app-1',
+    ownerAddress: ADDRESS,
+    name: 'Test NGO',
+    description: 'Desc',
+    website: null,
+    contactEmail: 'test@example.com',
+    country: null,
+    status: 'APPROVED' as const,
+    reviewNote: null,
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-02T00:00:00Z',
+  };
+
+  it('posts to the correct approve path', async () => {
+    const { reviewNgoApplication } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(reviewedApplication), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await reviewNgoApplication(ADDRESS, signMessage, 'app-1', 'approve');
+
+    const [calledUrl, calledInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(calledUrl).toContain('/ngo-applications/app-1/approve');
+    expect(calledInit.method).toBe('POST');
+  });
+
+  it('posts to the correct reject path', async () => {
+    const { reviewNgoApplication } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ ...reviewedApplication, status: 'REJECTED' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await reviewNgoApplication(ADDRESS, signMessage, 'app-1', 'reject');
+
+    const [calledUrl] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(calledUrl).toContain('/ngo-applications/app-1/reject');
+  });
+
+  it('includes a trimmed reviewNote in the request body when provided', async () => {
+    const { reviewNgoApplication } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(reviewedApplication), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await reviewNgoApplication(ADDRESS, signMessage, 'app-1', 'approve', '  Great org  ');
+
+    const [, calledInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(calledInit.body as string) as { reviewNote?: string };
+    expect(body.reviewNote).toBe('Great org');
+  });
+
+  it('omits reviewNote from the request body when not provided', async () => {
+    const { reviewNgoApplication } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(reviewedApplication), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await reviewNgoApplication(ADDRESS, signMessage, 'app-1', 'approve');
+
+    const [, calledInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(calledInit.body as string) as { reviewNote?: string };
+    expect(body.reviewNote).toBeUndefined();
+  });
+
+  it('omits reviewNote from the request body when an empty string is provided', async () => {
+    const { reviewNgoApplication } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(reviewedApplication), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await reviewNgoApplication(ADDRESS, signMessage, 'app-1', 'approve', '   ');
+
+    const [, calledInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(calledInit.body as string) as { reviewNote?: string };
+    expect(body.reviewNote).toBeUndefined();
+  });
+
+  it('returns the updated application on success', async () => {
+    const { reviewNgoApplication } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify(reviewedApplication), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        ),
+      ),
+    );
+
+    const result = await reviewNgoApplication(ADDRESS, signMessage, 'app-1', 'approve');
+    expect(result).toEqual(reviewedApplication);
+  });
+
+  it('throws when the response is not ok', async () => {
+    const { reviewNgoApplication } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(new Response(JSON.stringify({ error: 'not found' }), { status: 404 })),
+      ),
+    );
+
+    await expect(
+      reviewNgoApplication(ADDRESS, signMessage, 'missing-id', 'approve'),
+    ).rejects.toThrow(/404/);
+  });
+
+  it('URL-encodes the application id in the path', async () => {
+    const { reviewNgoApplication } = await freshAdminApi();
+    const signMessage = vi.fn().mockResolvedValue('sig');
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify(reviewedApplication), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    await reviewNgoApplication(ADDRESS, signMessage, 'app/with spaces', 'approve');
+
+    const [calledUrl] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(calledUrl).toContain('app%2Fwith%20spaces');
+  });
+});
