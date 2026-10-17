@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { describeAmountError, parseAmount, truncateAddress } from './format';
 import { formatAmount, formatTokenAmount, formatTokenTotals } from './format';
+import { formatEstimatedFee, formatRemainingDuration } from './format';
 import { getNativeAssetAddress, getUsdcAssetAddress } from './stellar';
 
 describe('formatAmount', () => {
@@ -200,5 +201,113 @@ describe('formatTokenTotals', () => {
 
   it('returns a bare 0 for no entries', () => {
     expect(formatTokenTotals([])).toBe('0');
+  });
+});
+
+describe('formatRemainingDuration', () => {
+  // Each raw value is i128 in the same token scale — dividing balance by rate
+  // cancels the scale, yielding a plain number of seconds.
+
+  it('returns "Fully drained" when balance is zero', () => {
+    expect(formatRemainingDuration('0', '1000000')).toBe('Fully drained');
+  });
+
+  it('returns "Fully drained" when balance is negative', () => {
+    expect(formatRemainingDuration('-1', '1000000')).toBe('Fully drained');
+  });
+
+  it('returns empty string when rate is zero (stream not draining)', () => {
+    expect(formatRemainingDuration('1000000', '0')).toBe('');
+  });
+
+  it('returns empty string when rate is negative', () => {
+    expect(formatRemainingDuration('1000000', '-1')).toBe('');
+  });
+
+  it('returns seconds for a duration under one minute', () => {
+    // balance / rate = 45 seconds
+    expect(formatRemainingDuration('45', '1')).toBe('~45 seconds remaining');
+  });
+
+  it('uses singular "second" for exactly 1 second', () => {
+    expect(formatRemainingDuration('1', '1')).toBe('~1 second remaining');
+  });
+
+  it('returns "~0 seconds remaining" for a balance that rounds down to zero seconds', () => {
+    // balance (1) / rate (2) = 0 seconds (BigInt division truncates toward zero)
+    expect(formatRemainingDuration('1', '2')).toBe('~0 seconds remaining');
+  });
+
+  it('returns minutes for a duration of exactly 60 seconds', () => {
+    expect(formatRemainingDuration('60', '1')).toBe('~1 minute remaining');
+  });
+
+  it('returns minutes for a duration under one hour', () => {
+    // 2700 seconds = 45 minutes
+    expect(formatRemainingDuration('2700', '1')).toBe('~45 minutes remaining');
+  });
+
+  it('uses singular "minute" for exactly 1 minute', () => {
+    expect(formatRemainingDuration('60', '1')).toBe('~1 minute remaining');
+  });
+
+  it('returns hours for a duration of exactly 3600 seconds', () => {
+    expect(formatRemainingDuration('3600', '1')).toBe('~1 hour remaining');
+  });
+
+  it('returns hours for a duration under one day', () => {
+    // 43200 seconds = 12 hours
+    expect(formatRemainingDuration('43200', '1')).toBe('~12 hours remaining');
+  });
+
+  it('uses singular "hour" for exactly 1 hour', () => {
+    expect(formatRemainingDuration('3600', '1')).toBe('~1 hour remaining');
+  });
+
+  it('returns days for a duration of exactly 86400 seconds', () => {
+    expect(formatRemainingDuration('86400', '1')).toBe('~1 day remaining');
+  });
+
+  it('returns days for multi-day durations', () => {
+    // 7 days = 604800 seconds
+    expect(formatRemainingDuration('604800', '1')).toBe('~7 days remaining');
+  });
+
+  it('uses singular "day" for exactly 1 day', () => {
+    expect(formatRemainingDuration('86400', '1')).toBe('~1 day remaining');
+  });
+
+  it('returns days (not months) for 30 days', () => {
+    // formatRemainingDuration does not have a months branch — 30+ days stay as days
+    expect(formatRemainingDuration('2592000', '1')).toBe('~30 days remaining');
+  });
+
+  it('divides balance by rate correctly when both are large token-scale values', () => {
+    // 86400 * 10_000_000 stroops of balance at 10_000_000 per second = 86400 s = 1 day
+    expect(formatRemainingDuration('864000000000', '10000000')).toBe('~1 day remaining');
+  });
+});
+
+describe('formatEstimatedFee', () => {
+  it('returns null for undefined', () => {
+    expect(formatEstimatedFee(undefined)).toBeNull();
+  });
+
+  it('returns null for an empty string', () => {
+    expect(formatEstimatedFee('')).toBeNull();
+  });
+
+  it('formats a fee in stroops as an XLM amount with the ≈ prefix', () => {
+    // 1_000_000 stroops = 0.1 XLM
+    expect(formatEstimatedFee('1000000')).toBe('≈ 0.1 XLM');
+  });
+
+  it('formats a whole-number fee without a decimal part', () => {
+    // 10_000_000 stroops = 1 XLM (no fractional part)
+    expect(formatEstimatedFee('10000000')).toBe('≈ 1 XLM');
+  });
+
+  it('formats a small fee (100 stroops = 0.00001 XLM)', () => {
+    expect(formatEstimatedFee('100')).toBe('≈ 0.00001 XLM');
   });
 });
