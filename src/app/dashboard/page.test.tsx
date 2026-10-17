@@ -106,6 +106,50 @@ describe('DashboardPage', () => {
     expect(screen.queryByRole('button', { name: /connect wallet/i })).not.toBeInTheDocument();
   });
 
+  it('keeps the newest response when an older request settles last', async () => {
+    const walletFor = (address: string) => ({
+      address,
+      connecting: false,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      signTransaction: vi.fn(),
+      signMessage: vi.fn(),
+    });
+    const wallet = vi.spyOn(WalletProviderMod, 'useWallet');
+    wallet.mockReturnValue(walletFor('GOLD'));
+
+    const resolvers: Record<string, (streams: Stream[]) => void> = {};
+    vi.spyOn(ApiMod, 'getStreams').mockImplementation(
+      ({ donor }) =>
+        new Promise<Stream[]>((resolve) => {
+          resolvers[donor as string] = resolve;
+        }),
+    );
+
+    const { rerender } = render(<DashboardPage />);
+    await waitFor(() => expect(resolvers.GOLD).toBeDefined());
+
+    // Switch wallets while the first request is still in flight.
+    wallet.mockReturnValue(walletFor('GNEW'));
+    rerender(<DashboardPage />);
+    await waitFor(() => expect(resolvers.GNEW).toBeDefined());
+
+    // The newer request resolves first, the older one arrives last.
+    await act(async () => {
+      resolvers.GNEW([
+        makeStream({ id: 'new', status: 'CANCELLED', ngo: { id: 'n2', name: 'New NGO', ownerAddress: 'GN' } }),
+      ]);
+    });
+    await act(async () => {
+      resolvers.GOLD([
+        makeStream({ id: 'old', status: 'CANCELLED', ngo: { id: 'n1', name: 'Old NGO', ownerAddress: 'GO' } }),
+      ]);
+    });
+
+    expect(screen.getByText('New NGO')).toBeInTheDocument();
+    expect(screen.queryByText('Old NGO')).not.toBeInTheDocument();
+  });
+
   describe('stream ID search', () => {
     // Cancelled so StreamControls (which needs a ToastProvider/contract
     // client this test file doesn't set up) never renders — irrelevant
