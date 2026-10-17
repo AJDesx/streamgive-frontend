@@ -1,10 +1,11 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import DashboardPage from './page';
 import * as WalletProviderMod from '@/components/wallet/WalletProvider';
 import * as ApiMod from '@/lib/api';
+import * as CsvMod from '@/lib/csv';
 import type { Stream } from '@/lib/api';
 
 function makeStream(overrides: Partial<Stream> = {}): Stream {
@@ -271,6 +272,157 @@ describe('DashboardPage', () => {
       await user.type(screen.getByPlaceholderText('Search by stream ID…'), '1');
       expect(rows()).toHaveLength(10);
       expect(screen.getByRole('button', { name: 'Load more' })).toBeInTheDocument();
+    });
+  });
+
+  describe('filter tabs', () => {
+    // StreamControls is mocked to null above, so an ACTIVE row is safe to
+    // render here.
+    const activeStream = makeStream({
+      id: 's1',
+      onChainId: '101',
+      status: 'ACTIVE',
+      ngo: { id: 'ngo-1', name: 'Active NGO', ownerAddress: 'G1' },
+    });
+    const cancelledStream = makeStream({
+      id: 's2',
+      onChainId: '202',
+      status: 'CANCELLED',
+      ngo: { id: 'ngo-2', name: 'Cancelled NGO', ownerAddress: 'G2' },
+    });
+
+    function setup(streams: Stream[]) {
+      vi.spyOn(WalletProviderMod, 'useWallet').mockReturnValue({
+        address: 'G123',
+        connecting: false,
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+        signTransaction: vi.fn(),
+        signMessage: vi.fn(),
+      });
+      vi.spyOn(ApiMod, 'getStreams').mockResolvedValue(streams);
+      render(<DashboardPage />);
+    }
+
+    it('selects the Active tab on first load when there are active streams', async () => {
+      setup([activeStream, cancelledStream]);
+
+      expect(await screen.findByText('Active NGO')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Active' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.queryByText('Cancelled NGO')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the All tab when no stream is active', async () => {
+      setup([cancelledStream]);
+
+      expect(await screen.findByText('Cancelled NGO')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'All' })).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('shows the right streams for each of the All, Active and Cancelled tabs', async () => {
+      const user = userEvent.setup();
+      setup([activeStream, cancelledStream]);
+      await screen.findByText('Active NGO');
+
+      await user.click(screen.getByRole('tab', { name: 'All' }));
+      expect(screen.getByRole('tab', { name: 'All' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByText('Active NGO')).toBeInTheDocument();
+      expect(screen.getByText('Cancelled NGO')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('tab', { name: 'Cancelled' }));
+      expect(screen.getByRole('tab', { name: 'Cancelled' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.queryByText('Active NGO')).not.toBeInTheDocument();
+      expect(screen.getByText('Cancelled NGO')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('tab', { name: 'Active' }));
+      expect(screen.getByRole('tab', { name: 'Active' })).toHaveAttribute('aria-selected', 'true');
+      expect(screen.getByText('Active NGO')).toBeInTheDocument();
+      expect(screen.queryByText('Cancelled NGO')).not.toBeInTheDocument();
+    });
+
+    it('shows an empty message when the selected tab has no streams', async () => {
+      const user = userEvent.setup();
+      setup([activeStream]);
+      await screen.findByText('Active NGO');
+
+      await user.click(screen.getByRole('tab', { name: 'Cancelled' }));
+
+      expect(screen.getByText('No cancelled streams found.')).toBeInTheDocument();
+    });
+
+    it('reveals the next page on Load more within a tab', async () => {
+      const user = userEvent.setup();
+      const manyCancelled = Array.from({ length: 12 }, (_, i) =>
+        makeStream({ id: `c${i + 1}`, onChainId: String(i + 1), status: 'CANCELLED' }),
+      );
+      setup([activeStream, ...manyCancelled]);
+      await screen.findByText('Active NGO');
+
+      await user.click(screen.getByRole('tab', { name: 'Cancelled' }));
+      expect(screen.getAllByRole('button', { name: 'View details' })).toHaveLength(10);
+
+      await user.click(screen.getByRole('button', { name: 'Load more' }));
+
+      expect(screen.getAllByRole('button', { name: 'View details' })).toHaveLength(12);
+      expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('export CSV', () => {
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+
+    afterEach(() => {
+      URL.createObjectURL = originalCreateObjectURL;
+      URL.revokeObjectURL = originalRevokeObjectURL;
+      vi.restoreAllMocks();
+    });
+
+    it('builds a CSV blob from all streams and downloads it', async () => {
+      const streams = [
+        makeStream({ id: 's1', onChainId: '101', status: 'ACTIVE' }),
+        makeStream({ id: 's2', onChainId: '202', status: 'CANCELLED' }),
+      ];
+      vi.spyOn(WalletProviderMod, 'useWallet').mockReturnValue({
+        address: 'G123',
+        connecting: false,
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+        signTransaction: vi.fn(),
+        signMessage: vi.fn(),
+      });
+      vi.spyOn(ApiMod, 'getStreams').mockResolvedValue(streams);
+      vi.mocked(CsvMod.buildDonationHistoryCsv).mockReturnValue('id,status\n101,ACTIVE');
+
+      const createObjectURL = vi.fn(() => 'blob:streamgive-csv');
+      const revokeObjectURL = vi.fn();
+      URL.createObjectURL = createObjectURL;
+      URL.revokeObjectURL = revokeObjectURL;
+
+      let downloaded: HTMLAnchorElement | null = null;
+      vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+        this: HTMLAnchorElement,
+      ) {
+        downloaded = this;
+      });
+
+      const user = userEvent.setup();
+      render(<DashboardPage />);
+      await user.click(await screen.findByRole('button', { name: 'Export CSV' }));
+
+      // The export covers every stream, not just the ones in the current tab.
+      expect(CsvMod.buildDonationHistoryCsv).toHaveBeenCalledWith(streams);
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      const blob = (createObjectURL.mock.calls[0] as unknown as [Blob])[0];
+      expect(blob).toBeInstanceOf(Blob);
+      expect(blob.type).toBe('text/csv;charset=utf-8;');
+      expect(blob.size).toBe('id,status\n101,ACTIVE'.length);
+
+      expect(downloaded).not.toBeNull();
+      expect((downloaded as unknown as HTMLAnchorElement).download).toBe('streamgive-donations.csv');
+      expect((downloaded as unknown as HTMLAnchorElement).href).toBe('blob:streamgive-csv');
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:streamgive-csv');
     });
   });
 
