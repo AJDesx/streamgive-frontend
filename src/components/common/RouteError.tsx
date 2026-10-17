@@ -28,7 +28,7 @@ export function RouteError({ error, reset, subject = 'This page' }: RouteErrorPr
         className="flex min-h-[60vh] items-center justify-center px-6 py-20 text-center sm:px-12"
       >
         <div className="max-w-xl">
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-600">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-700 dark:text-red-400">
             Something went wrong
           </p>
           <h1 className="mt-4 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">

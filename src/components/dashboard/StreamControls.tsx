@@ -202,7 +202,7 @@ export function StreamControls({
           </button>
         </div>
         {topUpAmountError !== null && (
-          <p id="top-up-amount-error" className="text-xs text-amber-600 dark:text-amber-400">
+          <p id="top-up-amount-error" className="text-xs text-amber-700 dark:text-amber-400">
             {topUpAmountError}
           </p>
         )}
@@ -281,7 +281,7 @@ export function StreamControls({
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
       {!ready && (
-        <span role="status" className="text-xs text-gray-400 dark:text-gray-500">
+        <span role="status" className="text-xs text-gray-600 dark:text-gray-400">
           Preparing contract…
         </span>
       )}

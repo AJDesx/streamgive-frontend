@@ -104,7 +104,7 @@ export function StreamDetailsModal({ stream, onClose }: { stream: Stream; onClos
             ref={closeButtonRef}
             onClick={onClose}
             aria-label="Close"
-            className="text-xl leading-none text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+            className="text-xl leading-none text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
           >
             &times;
           </button>

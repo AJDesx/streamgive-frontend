@@ -72,6 +72,7 @@ export function CreateStreamForm({
   // unstable read that can differ across re-renders of the same "confirm
   // this" snapshot.
   const [confirmationEndDate, setConfirmationEndDate] = useState<Date | null>(null);
+  const submitButtonRef = useRef<HTMLButtonElement>(null);
   const [walletBalance, setWalletBalance] = useState<string | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
   // Native XLM and USDC are both Stellar Asset Contracts, which always use 7
@@ -229,6 +230,12 @@ export function CreateStreamForm({
 
   function handleCancelConfirmation(): void {
     setSubmitState('idle');
+    // Restore focus to the submit button after React re-enables it.
+    // requestAnimationFrame defers until after the state flush so the button
+    // is no longer disabled when focus lands on it.
+    requestAnimationFrame(() => {
+      submitButtonRef.current?.focus();
+    });
   }
 
   async function handleConfirm(): Promise<void> {
@@ -355,7 +362,7 @@ export function CreateStreamForm({
               className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:border-gray-700 dark:bg-gray-900 dark:focus-visible:ring-teal-400"
             />
             {!isCustomTokenFormatValid && (
-              <p id="custom-token-error" className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+              <p id="custom-token-error" className="mt-1 text-sm text-amber-700 dark:text-amber-400">
                 Must be a Stellar contract address starting with C followed by 55 uppercase letters
                 or digits 2–7.
               </p>
@@ -366,7 +373,7 @@ export function CreateStreamForm({
               </p>
             )}
             {isTokenValid && decimalsError && (
-              <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+              <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
                 Couldn&apos;t read this token&apos;s decimals — it may not be a valid token
                 contract. Streaming it is blocked until this can be confirmed.
               </p>
@@ -375,9 +382,10 @@ export function CreateStreamForm({
         )}
       </fieldset>
 
-      <label className="block">
-        <span className="text-sm font-medium">Total amount</span>
+      <div className="block">
+        <label htmlFor="amount" className="text-sm font-medium">Total amount</label>
         <input
+          id="amount"
           type="number"
           min="0"
           step="any"
@@ -408,7 +416,7 @@ export function CreateStreamForm({
           ))}
         </div>
         {amountError !== null && (
-          <p id="amount-format-error" className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+          <p id="amount-format-error" className="mt-1 text-sm text-amber-700 dark:text-amber-400">
             {amountError}
           </p>
         )}
@@ -420,11 +428,11 @@ export function CreateStreamForm({
               : null}
         </p>
         {insufficientBalance && (
-          <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+          <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
             This exceeds your wallet balance — the transaction will fail.
           </p>
         )}
-      </label>
+      </div>
 
       <label className="block">
         <span className="text-sm font-medium">Stream over</span>
@@ -450,7 +458,7 @@ export function CreateStreamForm({
       )}
 
       {isRateValid && leftoverRaw !== null && leftoverRaw > 0n && effectiveStreamedRaw !== null && (
-        <p className="text-sm text-amber-600 dark:text-amber-400">
+        <p className="text-sm text-amber-700 dark:text-amber-400">
           Only {formatAmount(effectiveStreamedRaw.toString(), tokenDecimals ?? TOKEN_DECIMALS)} of
           your deposit will stream out at this rate; the remaining{' '}
           {formatAmount(leftoverRaw.toString(), tokenDecimals ?? TOKEN_DECIMALS)} stays in the
@@ -470,6 +478,7 @@ export function CreateStreamForm({
 
       <button
         type="submit"
+        ref={submitButtonRef}
         disabled={!canSubmit}
         className="w-full rounded-md bg-black px-6 py-3 text-sm font-medium text-white hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200 dark:focus-visible:ring-teal-400"
       >
@@ -536,23 +545,58 @@ function ConfirmDonationSummary({
   const dialogRef = useRef<HTMLDivElement>(null);
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
+  // Scroll lock — same pattern as StreamDetailsModal.
   useEffect(() => {
-    const triggerElement = document.activeElement as HTMLElement | null;
-    confirmButtonRef.current?.focus();
-
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     return () => {
-      if (triggerElement && typeof triggerElement.focus === 'function') {
-        triggerElement.focus();
-      }
+      document.body.style.overflow = previousOverflow;
     };
   }, []);
 
+  // Move focus into the dialog on open. Restore is handled by the caller
+  // via triggerRef so it runs after the parent re-enables the trigger button.
+  useEffect(() => {
+    confirmButtonRef.current?.focus();
+  }, []);
+
+  // Escape + Tab focus trap — same pattern as StreamDetailsModal.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         onCancel();
+        return;
+      }
+
+      if (event.key === 'Tab') {
+        if (!dialogRef.current) return;
+
+        const focusableElements = dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button, input, textarea, select, details, [tabindex]:not([tabindex="-1"])',
+        );
+        const focusable = Array.from(focusableElements).filter(
+          (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true',
+        );
+
+        if (focusable.length === 0) return;
+
+        const firstElement = focusable[0];
+        const lastElement = focusable[focusable.length - 1];
+
+        if (event.shiftKey) {
+          if (document.activeElement === firstElement) {
+            lastElement.focus();
+            event.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            firstElement.focus();
+            event.preventDefault();
+          }
+        }
       }
     }
+
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onCancel]);
