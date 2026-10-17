@@ -1,7 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { ToastProvider } from '@/components/toast/ToastProvider';
 
 import { ConnectWalletButton } from './ConnectWalletButton';
 import { useWallet, WalletProvider } from './WalletProvider';
@@ -38,9 +40,11 @@ vi.mock('@creit.tech/stellar-wallets-kit/modules/utils', () => ({
 
 function renderButton() {
   return render(
-    <WalletProvider>
-      <ConnectWalletButton />
-    </WalletProvider>,
+    <ToastProvider>
+      <WalletProvider>
+        <ConnectWalletButton />
+      </WalletProvider>
+    </ToastProvider>,
   );
 }
 
@@ -66,9 +70,11 @@ function SignMessageProbe({ message }: { message: string }) {
 
 function renderSignMessageProbe(message = 'hello') {
   return render(
-    <WalletProvider>
-      <SignMessageProbe message={message} />
-    </WalletProvider>,
+    <ToastProvider>
+      <WalletProvider>
+        <SignMessageProbe message={message} />
+      </WalletProvider>
+    </ToastProvider>,
   );
 }
 
@@ -98,6 +104,39 @@ describe('wallet connect flow', () => {
     });
   });
 
+  it('flags a wrong network on a session restored on mount', async () => {
+    mockGetAddress.mockResolvedValue({ address: TEST_ADDRESS });
+    mockGetNetwork.mockResolvedValueOnce({
+      network: 'PUBLIC',
+      networkPassphrase: 'Public Global Stellar Network ; September 2015',
+    });
+
+    renderButton();
+
+    expect(await screen.findByText(/wrong network/i)).toBeInTheDocument();
+  });
+
+  it('re-checks the network when the window regains focus', async () => {
+    mockGetAddress.mockResolvedValue({ address: TEST_ADDRESS });
+
+    renderButton();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button')).toHaveTextContent('GAAA…AAAA');
+    });
+    expect(screen.queryByText(/wrong network/i)).not.toBeInTheDocument();
+
+    mockGetNetwork.mockResolvedValueOnce({
+      network: 'PUBLIC',
+      networkPassphrase: 'Public Global Stellar Network ; September 2015',
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    expect(await screen.findByText(/wrong network/i)).toBeInTheDocument();
+  });
+
   it('shows the truncated address after connecting via the modal', async () => {
     mockGetAddress.mockRejectedValue(new Error('not connected'));
     mockAuthModal.mockResolvedValue({ address: TEST_ADDRESS });
@@ -110,6 +149,41 @@ describe('wallet connect flow', () => {
     await waitFor(() => {
       expect(screen.getByRole('button')).toHaveTextContent('GAAA…AAAA');
     });
+  });
+
+  it('treats dismissing the wallet modal as a no-op without rejecting or toasting', async () => {
+    mockGetAddress.mockRejectedValue(new Error('not connected'));
+    // The kit rejects with a plain object, not an Error, on dismissal.
+    mockAuthModal.mockRejectedValue({ code: -1, message: 'The user closed the modal.' });
+
+    const user = userEvent.setup();
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      renderButton();
+
+      await user.click(await screen.findByRole('button', { name: /connect wallet/i }));
+
+      // Back to the idle "Connect Wallet" state, with no error feedback.
+      expect(await screen.findByRole('button', { name: /connect wallet/i })).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
+  it('shows an error toast when connecting fails for another reason', async () => {
+    mockGetAddress.mockRejectedValue(new Error('not connected'));
+    mockAuthModal.mockRejectedValue(new Error('Wallet extension crashed'));
+
+    const user = userEvent.setup();
+    renderButton();
+
+    await user.click(await screen.findByRole('button', { name: /connect wallet/i }));
+
+    expect(await screen.findByText('Wallet extension crashed')).toBeInTheDocument();
   });
 
   it('forgets the address on disconnect without an SDK call', async () => {

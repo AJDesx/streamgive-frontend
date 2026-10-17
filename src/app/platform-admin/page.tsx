@@ -13,6 +13,7 @@ import { getNgos } from '@/lib/api';
 import { listNgoApplications, reviewNgoApplication } from '@/lib/adminApi';
 import { formatEstimatedFee, truncateAddress } from '@/lib/format';
 import { useNgoRegistryClient } from '@/lib/ngoRegistryClient';
+import { useLatestRequest } from '@/lib/useLatestRequest';
 
 export default function PlatformAdminPage() {
   const { address, signMessage } = useWallet();
@@ -20,7 +21,9 @@ export default function PlatformAdminPage() {
   const { showToast } = useToast();
   const [applications, setApplications] = useState<NgoApplication[]>([]);
   const [verifiedNgos, setVerifiedNgos] = useState<Ngo[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Starts true so the "no applications" state isn't painted before the
+  // first fetch begins.
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmingRejectId, setConfirmingRejectId] = useState<string | null>(null);
@@ -29,27 +32,37 @@ export default function PlatformAdminPage() {
   const [revokeConfirmId, setRevokeConfirmId] = useState<string | null>(null);
   const [estimatedFee, setEstimatedFee] = useState<string | null>(null);
 
+  // Only the most recently started refresh may write state, so a slow
+  // response for a previous status tab or wallet can't overwrite newer data.
+  const { begin, cancel } = useLatestRequest();
+
   const refresh = useCallback(async () => {
-    if (!address) return;
+    if (!address) {
+      cancel();
+      return;
+    }
+    const request = begin();
     setLoading(true);
     setError(null);
     try {
       const [apps, ngos] = await Promise.all([
         listNgoApplications(address, signMessage, statusFilter),
-        getNgos(),
+        getNgos(request.signal),
       ]);
+      if (!request.isCurrent()) return;
       setApplications(apps);
       setVerifiedNgos(ngos.filter(n => n.verified));
     } catch (err) {
+      if (!request.isCurrent()) return;
       setError(
         err instanceof Error
           ? err.message
           : 'Failed to load applications — are you connected as the configured admin address?',
       );
     } finally {
-      setLoading(false);
+      if (request.isCurrent()) setLoading(false);
     }
-  }, [address, signMessage, statusFilter]);
+  }, [address, signMessage, statusFilter, begin, cancel]);
 
   useEffect(() => {
     // refresh() flips loading/error state synchronously before it awaits,

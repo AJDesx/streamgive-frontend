@@ -61,6 +61,95 @@ describe('DashboardPage', () => {
     });
   });
 
+  it('does not render the empty state before the first fetch resolves', async () => {
+    vi.spyOn(WalletProviderMod, 'useWallet').mockReturnValue({
+      address: 'G123',
+      connecting: false,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      signTransaction: vi.fn(),
+      signMessage: vi.fn(),
+    });
+
+    let resolveFetch: (streams: Stream[]) => void = () => {};
+    vi.spyOn(ApiMod, 'getStreams').mockReturnValue(
+      new Promise<Stream[]>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    render(<DashboardPage />);
+
+    expect(screen.getByText(/loading your streams/i)).toBeInTheDocument();
+    expect(screen.queryByText(/you haven't started any streams yet/i)).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveFetch([]);
+    });
+
+    expect(screen.getByText(/you haven't started any streams yet/i)).toBeInTheDocument();
+  });
+
+  it('shows a neutral loading state, not the connect prompt, while the wallet session restores', () => {
+    vi.spyOn(WalletProviderMod, 'useWallet').mockReturnValue({
+      address: null,
+      connecting: true,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      signTransaction: vi.fn(),
+      signMessage: vi.fn(),
+    });
+
+    render(<DashboardPage />);
+
+    expect(screen.getByRole('status')).toHaveTextContent(/loading/i);
+    expect(screen.queryByRole('button', { name: /connect wallet/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps the newest response when an older request settles last', async () => {
+    const walletFor = (address: string) => ({
+      address,
+      connecting: false,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      signTransaction: vi.fn(),
+      signMessage: vi.fn(),
+    });
+    const wallet = vi.spyOn(WalletProviderMod, 'useWallet');
+    wallet.mockReturnValue(walletFor('GOLD'));
+
+    const resolvers: Record<string, (streams: Stream[]) => void> = {};
+    vi.spyOn(ApiMod, 'getStreams').mockImplementation(
+      ({ donor }) =>
+        new Promise<Stream[]>((resolve) => {
+          resolvers[donor as string] = resolve;
+        }),
+    );
+
+    const { rerender } = render(<DashboardPage />);
+    await waitFor(() => expect(resolvers.GOLD).toBeDefined());
+
+    // Switch wallets while the first request is still in flight.
+    wallet.mockReturnValue(walletFor('GNEW'));
+    rerender(<DashboardPage />);
+    await waitFor(() => expect(resolvers.GNEW).toBeDefined());
+
+    // The newer request resolves first, the older one arrives last.
+    await act(async () => {
+      resolvers.GNEW([
+        makeStream({ id: 'new', status: 'CANCELLED', ngo: { id: 'n2', name: 'New NGO', ownerAddress: 'GN' } }),
+      ]);
+    });
+    await act(async () => {
+      resolvers.GOLD([
+        makeStream({ id: 'old', status: 'CANCELLED', ngo: { id: 'n1', name: 'Old NGO', ownerAddress: 'GO' } }),
+      ]);
+    });
+
+    expect(screen.getByText('New NGO')).toBeInTheDocument();
+    expect(screen.queryByText('Old NGO')).not.toBeInTheDocument();
+  });
+
   describe('stream ID search', () => {
     // Cancelled so StreamControls (which needs a ToastProvider/contract
     // client this test file doesn't set up) never renders — irrelevant

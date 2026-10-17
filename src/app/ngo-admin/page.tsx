@@ -14,6 +14,7 @@ import { StreamDetailsModal } from '@/components/streams/StreamDetailsModal';
 import { useWallet } from '@/components/wallet/WalletProvider';
 import { getStreams, lookupNgoByAddress, type Ngo, type Stream } from '@/lib/api';
 import { formatTokenTotals } from '@/lib/format';
+import { useLatestRequest } from '@/lib/useLatestRequest';
 
 export default function NgoAdminPage() {
   const { address } = useWallet();
@@ -35,27 +36,38 @@ export default function NgoAdminPage() {
     setLoadError(false);
   }
 
+  // Only the most recently started refresh may write state, so a slow
+  // response for a previous wallet can't land after, and overwrite, newer data.
+  const { begin, cancel } = useLatestRequest();
+
   const refresh = useCallback(async () => {
     if (!address) {
+      cancel();
       setNgo(undefined);
       setStreams([]);
       return;
     }
 
+    const request = begin();
     setLoading(true);
     setLoadError(false);
     try {
       // /ngos/lookup also returns unverified NGOs, so an applicant waiting
       // on review can be told that instead of being sent to apply again.
       const match = await lookupNgoByAddress(address);
+      if (!request.isCurrent()) return;
+      const nextStreams = match?.verified
+        ? await getStreams({ ngo: match.id }, request.signal)
+        : [];
+      if (!request.isCurrent()) return;
       setNgo(match);
-      setStreams(match?.verified ? await getStreams({ ngo: match.id }) : []);
+      setStreams(nextStreams);
     } catch {
-      setLoadError(true);
+      if (request.isCurrent()) setLoadError(true);
     } finally {
-      setLoading(false);
+      if (request.isCurrent()) setLoading(false);
     }
-  }, [address]);
+  }, [address, begin, cancel]);
 
   useEffect(() => {
     // refresh() flips loading/error state synchronously before it awaits,

@@ -12,6 +12,7 @@ import { useWallet } from '@/components/wallet/WalletProvider';
 import { getStreams, type Stream } from '@/lib/api';
 import { buildDonationHistoryCsv } from '@/lib/csv';
 import { formatRemainingDuration, formatTokenAmount, formatTokenTotals } from '@/lib/format';
+import { useLatestRequest } from '@/lib/useLatestRequest';
 
 // Client-side pagination over the already-fetched list — same interim
 // approach as NgoExplorer, until the backend exposes real limit/offset
@@ -76,7 +77,9 @@ export type SortOrder = 'newest' | 'oldest' | 'largest-committed' | 'ending-soon
 export default function DashboardPage() {
   const { address } = useWallet();
   const [streams, setStreams] = useState<Stream[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Starts true so a connected donor never sees the empty state in the
+  // render before the first fetch begins.
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [detailsStream, setDetailsStream] = useState<Stream | null>(null);
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'CANCELLED'>('ALL');
@@ -93,19 +96,27 @@ export default function DashboardPage() {
     setPrevAddress(address);
     setStreams([]);
     setLoadError(false);
+    setLoading(true);
   }
+
+  // Shared by refresh() and the poll below, so a poll can't overlap a manual
+  // refresh (or a wallet switch) and land after it with older data.
+  const { begin, cancel } = useLatestRequest();
 
   const refresh = useCallback(() => {
     if (!address) {
+      cancel();
       setStreams([]);
       setFilterInitialized(false);
       return;
     }
 
+    const request = begin();
     setLoading(true);
     setLoadError(false);
-    getStreams({ donor: address })
+    getStreams({ donor: address }, request.signal)
       .then((data) => {
+        if (!request.isCurrent()) return;
         setStreams(data);
         setFilterInitialized((prev) => {
           if (!prev) {
@@ -115,9 +126,13 @@ export default function DashboardPage() {
           return prev;
         });
       })
-      .catch(() => setLoadError(true))
-      .finally(() => setLoading(false));
-  }, [address]);
+      .catch(() => {
+        if (request.isCurrent()) setLoadError(true);
+      })
+      .finally(() => {
+        if (request.isCurrent()) setLoading(false);
+      });
+  }, [address, begin, cancel]);
 
   useEffect(() => {
     // refresh() flips loading/error state synchronously before it awaits,
@@ -133,28 +148,29 @@ export default function DashboardPage() {
     if (!address) return;
 
     // A quiet background refresh — unlike refresh() above, it never flips
-    // `loading` (the list would otherwise flash "Loading your streams…"
+    // `loading` on (the list would otherwise flash "Loading your streams…"
     // every 30s) and never re-runs the first-load filter auto-selection.
-    // Guards against setState after the poll's own fetch settles once this
-    // effect has already cleaned up, same reasoning as the impact page.
-    let cancelled = false;
-    let activeController: AbortController | null = null;
+    // It shares refresh()'s request guard: starting a poll supersedes an
+    // in-flight refresh and vice versa, and a superseded or post-cleanup
+    // response is dropped. Because it can supersede a refresh, a poll that
+    // settles also clears `loading`.
     let interval: ReturnType<typeof setInterval> | null = null;
 
     function poll() {
-      const controller = new AbortController();
-      activeController = controller;
-      getStreams({ donor: address }, controller.signal)
+      const request = begin();
+      getStreams({ donor: address as string }, request.signal)
         .then((data) => {
-          if (!cancelled) {
-            setStreams(data);
-            setLoadError(false);
-          }
+          if (!request.isCurrent()) return;
+          setStreams(data);
+          setLoadError(false);
+          setLoading(false);
         })
         .catch((err: unknown) => {
-          if (!cancelled && !(err instanceof DOMException && err.name === 'AbortError')) {
+          if (!request.isCurrent()) return;
+          if (!(err instanceof DOMException && err.name === 'AbortError')) {
             setLoadError(true);
           }
+          setLoading(false);
         });
     }
 
@@ -187,12 +203,11 @@ export default function DashboardPage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      cancelled = true;
       stopPolling();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      activeController?.abort();
+      cancel();
     };
-  }, [address]);
+  }, [address, begin, cancel]);
 
   const applyOptimisticUpdate = useCallback((streamId: string, patch: Partial<Stream>) => {
     setStreams((prev) => prev.map((s) => (s.id === streamId ? { ...s, ...patch } : s)));

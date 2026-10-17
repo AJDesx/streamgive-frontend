@@ -32,7 +32,7 @@ function isAlreadyRegistered(err: unknown): boolean {
 }
 
 export default function ApplyPage() {
-  const { address, connect } = useWallet();
+  const { address, connecting, connect } = useWallet();
   const { client, ready } = useNgoRegistryClient();
 
   const [name, setName] = useState('');
@@ -167,7 +167,11 @@ export default function ApplyPage() {
           yours.
         </p>
 
-        {!address ? (
+        {!address && connecting ? (
+          <p role="status" className="mt-8 text-gray-500 dark:text-gray-400">
+            Loading…
+          </p>
+        ) : !address ? (
           <div className="mt-8 max-w-md rounded-lg border border-gray-200 p-6 text-center dark:border-gray-800">
             <p className="text-gray-600 dark:text-gray-400">Connect your wallet to apply.</p>
             <button
