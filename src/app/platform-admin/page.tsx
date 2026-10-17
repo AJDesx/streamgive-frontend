@@ -20,7 +20,9 @@ export default function PlatformAdminPage() {
   const { showToast } = useToast();
   const [applications, setApplications] = useState<NgoApplication[]>([]);
   const [verifiedNgos, setVerifiedNgos] = useState<Ngo[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Starts true so the "no applications" state isn't painted before the
+  // first fetch begins.
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmingRejectId, setConfirmingRejectId] = useState<string | null>(null);

@@ -61,6 +61,51 @@ describe('DashboardPage', () => {
     });
   });
 
+  it('does not render the empty state before the first fetch resolves', async () => {
+    vi.spyOn(WalletProviderMod, 'useWallet').mockReturnValue({
+      address: 'G123',
+      connecting: false,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      signTransaction: vi.fn(),
+      signMessage: vi.fn(),
+    });
+
+    let resolveFetch: (streams: Stream[]) => void = () => {};
+    vi.spyOn(ApiMod, 'getStreams').mockReturnValue(
+      new Promise<Stream[]>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    render(<DashboardPage />);
+
+    expect(screen.getByText(/loading your streams/i)).toBeInTheDocument();
+    expect(screen.queryByText(/you haven't started any streams yet/i)).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveFetch([]);
+    });
+
+    expect(screen.getByText(/you haven't started any streams yet/i)).toBeInTheDocument();
+  });
+
+  it('shows a neutral loading state, not the connect prompt, while the wallet session restores', () => {
+    vi.spyOn(WalletProviderMod, 'useWallet').mockReturnValue({
+      address: null,
+      connecting: true,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
+      signTransaction: vi.fn(),
+      signMessage: vi.fn(),
+    });
+
+    render(<DashboardPage />);
+
+    expect(screen.getByRole('status')).toHaveTextContent(/loading/i);
+    expect(screen.queryByRole('button', { name: /connect wallet/i })).not.toBeInTheDocument();
+  });
+
   describe('stream ID search', () => {
     // Cancelled so StreamControls (which needs a ToastProvider/contract
     // client this test file doesn't set up) never renders — irrelevant

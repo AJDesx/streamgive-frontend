@@ -5,7 +5,8 @@ import { useWallet } from '@/components/wallet/WalletProvider';
 /**
  * The "please connect your wallet" card shown in place of a protected
  * page/form's content — dashboard, NGO admin, platform admin, and the
- * donate form all show one differing only in their message.
+ * donate form all show one differing only in their message. Renders a
+ * neutral loading line instead while the wallet session is being restored.
  */
 export function ConnectWalletPrompt({
   message,
@@ -14,7 +15,18 @@ export function ConnectWalletPrompt({
   message: string;
   className?: string;
 }) {
-  const { connect } = useWallet();
+  const { connect, connecting } = useWallet();
+
+  // While the provider is still restoring a session the address is null
+  // too, so showing the prompt would flash "Connect your wallet" at a user
+  // who is about to be connected.
+  if (connecting) {
+    return (
+      <p role="status" className={`text-gray-500 dark:text-gray-400 ${className}`}>
+        Loading…
+      </p>
+    );
+  }
 
   return (
     <div

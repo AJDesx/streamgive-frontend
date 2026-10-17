@@ -76,7 +76,9 @@ export type SortOrder = 'newest' | 'oldest' | 'largest-committed' | 'ending-soon
 export default function DashboardPage() {
   const { address } = useWallet();
   const [streams, setStreams] = useState<Stream[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Starts true so a connected donor never sees the empty state in the
+  // render before the first fetch begins.
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [detailsStream, setDetailsStream] = useState<Stream | null>(null);
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'CANCELLED'>('ALL');
@@ -93,6 +95,7 @@ export default function DashboardPage() {
     setPrevAddress(address);
     setStreams([]);
     setLoadError(false);
+    setLoading(true);
   }
 
   const refresh = useCallback(() => {
