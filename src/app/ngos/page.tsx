@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Suspense } from 'react';
 
 import { Footer } from '@/components/layout/Footer';
@@ -42,9 +43,17 @@ export default async function NgosPage() {
         <h1 className="text-2xl font-bold">Explore NGOs</h1>
 
         {loadError && (
-          <p className="mt-4 text-red-600 dark:text-red-400">
-            Couldn&apos;t reach the StreamGive API. Is the backend running?
-          </p>
+          <div className="mt-4">
+            <p className="text-red-600 dark:text-red-400">
+              Couldn&apos;t load the NGO list. Please check your connection and try again.
+            </p>
+            <Link
+              href="/ngos"
+              className="mt-3 inline-block rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+            >
+              Retry
+            </Link>
+          </div>
         )}
 
         {!loadError && (

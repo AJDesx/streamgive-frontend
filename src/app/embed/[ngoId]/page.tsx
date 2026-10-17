@@ -30,7 +30,7 @@ export default async function EmbedDonatePage({ params }: Props) {
     return (
       <EmbedAutoResizer>
         <main id="main" className="p-6 text-center text-sm text-red-600 dark:text-red-400">
-          Couldn&apos;t reach the StreamGive API.
+          Couldn&apos;t load the donation form. Please try refreshing the page.
         </main>
       </EmbedAutoResizer>
     );

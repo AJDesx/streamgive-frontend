@@ -18,6 +18,8 @@ export function WithdrawalHistory({ ngoId }: { ngoId: string }) {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Incrementing retryKey re-runs the fetch effect without changing ngoId.
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,7 +48,7 @@ export function WithdrawalHistory({ ngoId }: { ngoId: string }) {
       cancelled = true;
       controller.abort();
     };
-  }, [ngoId]);
+  }, [ngoId, retryKey]);
 
   return (
     <div className="mt-8">
@@ -59,9 +61,18 @@ export function WithdrawalHistory({ ngoId }: { ngoId: string }) {
       )}
 
       {!loading && loadError && (
-        <p className="mt-2 text-sm text-red-600 dark:text-red-400">
-          Couldn&apos;t load withdrawal history. Is the backend running?
-        </p>
+        <div className="mt-2">
+          <p className="text-sm text-red-600 dark:text-red-400">
+            Couldn&apos;t load withdrawal history. Please check your connection and try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => setRetryKey((k) => k + 1)}
+            className="mt-2 rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+          >
+            Retry
+          </button>
+        </div>
       )}
 
       {!loading && !loadError && withdrawals !== null && withdrawals.length === 0 && (

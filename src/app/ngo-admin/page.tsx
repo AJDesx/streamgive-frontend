@@ -97,9 +97,18 @@ export default function NgoAdminPage() {
         )}
 
         {address && !loading && loadError && (
-          <p className="mt-8 text-red-600 dark:text-red-400">
-            Couldn&apos;t reach the StreamGive API. Is the backend running?
-          </p>
+          <div className="mt-8">
+            <p className="text-red-600 dark:text-red-400">
+              Couldn&apos;t load your NGO data. Please check your connection and try again.
+            </p>
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="mt-3 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+            >
+              Retry
+            </button>
+          </div>
         )}
 
         {address && !loading && !loadError && ngo === null && (

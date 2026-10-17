@@ -23,6 +23,8 @@ const POLL_INTERVAL_MS = 20_000;
 export default function ImpactPage() {
   const [impact, setImpact] = useState<PlatformImpact | null>(null);
   const [loadError, setLoadError] = useState(false);
+  // Incrementing this triggers the effect to remount and retry immediately.
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     // Guards every setState below against a tick that is still in flight
@@ -63,7 +65,7 @@ export default function ImpactPage() {
       clearInterval(interval);
       activeController.abort();
     };
-  }, []);
+  }, [retryCount]);
 
   return (
     <>
@@ -75,9 +77,18 @@ export default function ImpactPage() {
         </p>
 
         {loadError && !impact && (
-          <p className="mt-8 text-red-600">
-            Couldn&apos;t reach the StreamGive API. Is the backend running?
-          </p>
+          <div className="mt-8">
+            <p className="text-red-600 dark:text-red-400">
+              Couldn&apos;t load platform stats. Please check your connection and try again.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setLoadError(false); setRetryCount((c) => c + 1); }}
+              className="mt-3 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+            >
+              Retry
+            </button>
+          </div>
         )}
 
         {/* Keep the last good numbers on screen when a later poll fails;

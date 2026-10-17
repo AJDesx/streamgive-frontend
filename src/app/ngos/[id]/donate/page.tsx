@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { CreateStreamForm } from '@/components/donate/CreateStreamForm';
@@ -26,8 +27,14 @@ export default async function DonatePage({ params }: Props) {
         <Header />
         <main id="main" className="px-6 py-16 sm:px-12">
           <p className="text-red-600 dark:text-red-400">
-            Couldn&apos;t reach the StreamGive API. Is the backend running?
+            Couldn&apos;t load this NGO&apos;s details. Please check your connection and try again.
           </p>
+          <Link
+            href={`/ngos/${id}/donate`}
+            className="mt-3 inline-block rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+          >
+            Retry
+          </Link>
         </main>
         <Footer />
       </>
