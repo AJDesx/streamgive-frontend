@@ -97,4 +97,121 @@ describe('ToastProvider', () => {
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', 'https://stellar.expert/explorer/testnet/tx/123');
   });
+
+  describe('pause, resume and dismiss', () => {
+    function renderWithToast(buttonLabel = 'Show Success') {
+      render(
+        <ToastProvider>
+          <TestComponent />
+        </ToastProvider>,
+      );
+      fireEvent.click(screen.getByText(buttonLabel));
+    }
+
+    const toastBox = () => screen.getByRole('status');
+
+    it('stops the auto-dismiss timer while the toast is hovered', () => {
+      renderWithToast();
+
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      fireEvent.mouseEnter(toastBox());
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+
+      expect(screen.getByText('Success Toast')).toBeInTheDocument();
+    });
+
+    it('restarts the timer when the pointer leaves', () => {
+      renderWithToast();
+
+      fireEvent.mouseEnter(toastBox());
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      fireEvent.mouseLeave(toastBox());
+
+      act(() => {
+        vi.advanceTimersByTime(4999);
+      });
+      expect(screen.getByText('Success Toast')).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(screen.queryByText('Success Toast')).not.toBeInTheDocument();
+    });
+
+    it('stops the auto-dismiss timer while focus is inside the toast', () => {
+      renderWithToast();
+
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      fireEvent.focus(screen.getByRole('button', { name: 'Dismiss notification' }));
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+
+      expect(screen.getByText('Success Toast')).toBeInTheDocument();
+    });
+
+    it('restarts the timer when focus leaves the toast', () => {
+      renderWithToast();
+      const dismiss = screen.getByRole('button', { name: 'Dismiss notification' });
+
+      fireEvent.focus(dismiss);
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      fireEvent.blur(dismiss);
+
+      act(() => {
+        vi.advanceTimersByTime(4999);
+      });
+      expect(screen.getByText('Success Toast')).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(screen.queryByText('Success Toast')).not.toBeInTheDocument();
+    });
+
+    it('only pauses the toast that is hovered', () => {
+      render(
+        <ToastProvider>
+          <TestComponent />
+        </ToastProvider>,
+      );
+      fireEvent.click(screen.getByText('Show Success'));
+      fireEvent.click(screen.getByText('Show Info'));
+
+      fireEvent.mouseEnter(screen.getAllByRole('status')[0]);
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      expect(screen.getByText('Success Toast')).toBeInTheDocument();
+      expect(screen.queryByText('Info Toast')).not.toBeInTheDocument();
+    });
+
+    it('removes the toast immediately when the dismiss button is clicked', () => {
+      renderWithToast();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss notification' }));
+
+      expect(screen.queryByText('Success Toast')).not.toBeInTheDocument();
+    });
+
+    it('clears the auto-dismiss timer of a manually dismissed toast', () => {
+      renderWithToast();
+      expect(vi.getTimerCount()).toBe(1);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss notification' }));
+
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  });
 });
