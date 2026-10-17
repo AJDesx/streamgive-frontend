@@ -83,7 +83,7 @@ export default function ImpactPage() {
         {/* Keep the last good numbers on screen when a later poll fails;
             the next successful poll clears the notice. */}
         {loadError && impact && (
-          <p role="status" className="mt-8 text-sm text-amber-600">
+          <p role="status" className="mt-8 text-sm text-amber-700 dark:text-amber-400">
             Couldn&apos;t refresh — showing the last numbers we loaded.
           </p>
         )}

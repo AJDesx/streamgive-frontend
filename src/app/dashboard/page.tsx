@@ -301,7 +301,7 @@ export default function DashboardPage() {
             {/* A later poll failed, but we still have the last good list —
                 keep showing it rather than replacing it with an error. */}
             {loadError && (
-              <p role="status" className="mb-4 text-sm text-amber-600 dark:text-amber-400">
+              <p role="status" className="mb-4 text-sm text-amber-700 dark:text-amber-400">
                 Couldn&apos;t refresh — showing the last numbers we loaded.
               </p>
             )}
@@ -334,25 +334,31 @@ export default function DashboardPage() {
             </div>
 
             <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-800">
-              <div className="flex gap-4">
+              <div role="tablist" aria-label="Filter streams" className="flex gap-4">
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={filter === 'ALL'}
                   onClick={() => handleFilterChange('ALL')}
-                  className={`pb-2 text-sm font-medium ${filter === 'ALL' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+                  className={`pb-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:focus-visible:ring-teal-400 ${filter === 'ALL' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
                 >
                   All
                 </button>
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={filter === 'ACTIVE'}
                   onClick={() => handleFilterChange('ACTIVE')}
-                  className={`pb-2 text-sm font-medium ${filter === 'ACTIVE' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+                  className={`pb-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:focus-visible:ring-teal-400 ${filter === 'ACTIVE' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
                 >
                   Active
                 </button>
                 <button
                   type="button"
+                  role="tab"
+                  aria-selected={filter === 'CANCELLED'}
                   onClick={() => handleFilterChange('CANCELLED')}
-                  className={`pb-2 text-sm font-medium ${filter === 'CANCELLED' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
+                  className={`pb-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:focus-visible:ring-teal-400 ${filter === 'CANCELLED' ? 'border-b-2 border-black text-black dark:border-white dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}`}
                 >
                   Cancelled
                 </button>

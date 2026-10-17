@@ -133,12 +133,15 @@ export default function PlatformAdminPage() {
 
         {address && (
           <div className="mt-8 border-b border-gray-200 dark:border-gray-800">
-            <nav className="-mb-px flex space-x-8">
+            <div role="tablist" aria-label="Application status" className="-mb-px flex space-x-8">
               {(['PENDING', 'APPROVED', 'REJECTED'] as const).map((status) => (
                 <button
                   key={status}
+                  type="button"
+                  role="tab"
+                  aria-selected={statusFilter === status}
                   onClick={() => setStatusFilter(status)}
-                  className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+                  className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:focus-visible:ring-teal-400 ${
                     statusFilter === status
                       ? 'border-black text-black dark:border-white dark:text-white'
                       : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-300'
@@ -147,7 +150,7 @@ export default function PlatformAdminPage() {
                   {status.charAt(0) + status.slice(1).toLowerCase()}
                 </button>
               ))}
-            </nav>
+            </div>
           </div>
         )}
 
@@ -187,7 +190,7 @@ export default function PlatformAdminPage() {
                       </p>
                       <CopyAddressButton address={app.ownerAddress} />
                     </div>
-                    <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                       Submitted{' '}
                       {new Date(app.createdAt).toLocaleDateString(undefined, {
                         year: 'numeric',
@@ -295,7 +298,7 @@ export default function PlatformAdminPage() {
                         </p>
                         <CopyAddressButton address={ngo.ownerAddress} />
                       </div>
-                      <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                      <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                         Registered{' '}
                         {new Date(ngo.createdAt).toLocaleDateString(undefined, {
                           year: 'numeric',
