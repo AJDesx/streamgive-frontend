@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from 'react';
 
+import { useToast } from '@/components/toast/ToastProvider';
 import { NETWORK_PASSPHRASE } from '@/lib/stellar';
 
 /** SEP-43's standard signing-callback shape — also exactly what
@@ -60,6 +61,25 @@ async function walletNetworkMismatch(): Promise<boolean> {
   }
 }
 
+/** The kit's authModal() rejects with a plain `{ code, message }` object (not
+ * an Error) when the user closes the modal, so both shapes are read. */
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === 'string') return err;
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    return String((err as { message: unknown }).message);
+  }
+  return '';
+}
+
+/** Closing the wallet modal (or declining in the wallet) is a choice, not a
+ * failure — it shouldn't produce an error toast. */
+function isUserDismissal(err: unknown): boolean {
+  return /closed the modal|modal (was )?closed|user (closed|cancel|reject|declin|denied)|dismiss|cancel/i.test(
+    errorMessage(err),
+  );
+}
+
 const WalletContext = createContext<WalletContextValue | null>(null);
 
 let kitInitialized = false;
@@ -98,10 +118,10 @@ function ensureKitInitialized(): void {
  *    so UI can show a loading state instead of flashing a disconnected state.
  * 2. **User-initiated connect.** Calling `connect()` sets `connecting: true`,
  *    opens the wallet-selection auth modal, and on success sets `address`.
- *    `connecting` is always reset to `false` in a `finally`, including when
- *    the user closes the modal without picking a wallet or the modal
- *    throws — callers should surface that rejection themselves if they want
- *    user-facing error feedback, since `WalletProvider` does not.
+ *    `connecting` is always reset to `false` in a `finally`. `connect()`
+ *    never rejects: closing the modal without picking a wallet is a silent
+ *    no-op, and any other failure is surfaced as an error toast, so callers
+ *    can fire `void connect()` without a catch.
  *    A restored session also runs the network check, and while connected the
  *    check is repeated each time the window regains focus.
  * 3. **Connected.** While `address` is set, `signTransaction` and
@@ -122,6 +142,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(true);
   const [networkMismatch, setNetworkMismatch] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     ensureKitInitialized();
@@ -175,10 +196,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       const { address } = await StellarWalletsKit.authModal();
       setAddress(address);
       setNetworkMismatch(await walletNetworkMismatch());
+    } catch (err) {
+      if (!isUserDismissal(err)) {
+        showToast('error', errorMessage(err) || 'Couldn\'t connect your wallet. Please try again.');
+      }
     } finally {
       setConnecting(false);
     }
-  }, []);
+  }, [showToast]);
 
   const disconnect = useCallback(() => {
     // The kit has no app-callable disconnect as of writing — the wallet
