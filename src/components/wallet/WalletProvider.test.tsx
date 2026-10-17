@@ -68,6 +68,24 @@ function SignMessageProbe({ message }: { message: string }) {
   );
 }
 
+/** Exposes networkMismatch as text, so the raw flag can be asserted next to
+ * the "Wrong network" hint ConnectWalletButton derives from it. */
+function NetworkMismatchProbe() {
+  const { networkMismatch } = useWallet();
+  return <span data-testid="network-mismatch">{String(networkMismatch)}</span>;
+}
+
+function renderButtonWithProbe() {
+  return render(
+    <ToastProvider>
+      <WalletProvider>
+        <ConnectWalletButton />
+        <NetworkMismatchProbe />
+      </WalletProvider>
+    </ToastProvider>,
+  );
+}
+
 function renderSignMessageProbe(message = 'hello') {
   return render(
     <ToastProvider>
@@ -202,6 +220,98 @@ describe('wallet connect flow', () => {
     await user.click(screen.getByRole('button'));
 
     expect(await screen.findByRole('button', { name: /connect wallet/i })).toBeInTheDocument();
+  });
+});
+
+describe('networkMismatch', () => {
+  const OTHER_NETWORK = {
+    network: 'PUBLIC',
+    networkPassphrase: 'Public Global Stellar Network ; September 2015',
+  };
+
+  beforeEach(() => {
+    mockGetAddress.mockReset();
+    mockAuthModal.mockReset();
+    mockGetNetwork.mockClear();
+    // Nothing to restore on mount: these tests connect through the modal.
+    mockGetAddress.mockRejectedValue(new Error('not connected'));
+    mockAuthModal.mockResolvedValue({ address: TEST_ADDRESS });
+  });
+
+  async function connectWallet() {
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: /connect wallet/i }));
+    await screen.findByRole('button', { name: /connected as/i });
+    return user;
+  }
+
+  it('is true, and the button shows "Wrong network", when the wallet reports a different passphrase', async () => {
+    mockGetNetwork.mockResolvedValueOnce(OTHER_NETWORK);
+
+    renderButtonWithProbe();
+    await connectWallet();
+
+    expect(screen.getByTestId('network-mismatch')).toHaveTextContent('true');
+    expect(screen.getByText('Wrong network')).toBeInTheDocument();
+  });
+
+  it('is false, and no hint shows, when the wallet is on the matching network', async () => {
+    mockGetNetwork.mockResolvedValueOnce({
+      network: 'TESTNET',
+      networkPassphrase: NETWORK_PASSPHRASE,
+    });
+
+    renderButtonWithProbe();
+    await connectWallet();
+
+    expect(mockGetNetwork).toHaveBeenCalled();
+    expect(screen.getByTestId('network-mismatch')).toHaveTextContent('false');
+    expect(screen.queryByText('Wrong network')).not.toBeInTheDocument();
+  });
+
+  it('is false when the wallet cannot report its network', async () => {
+    mockGetNetwork.mockRejectedValueOnce(new Error('getNetwork is not supported'));
+
+    renderButtonWithProbe();
+    await connectWallet();
+
+    expect(screen.getByTestId('network-mismatch')).toHaveTextContent('false');
+    expect(screen.queryByText('Wrong network')).not.toBeInTheDocument();
+  });
+
+  it('clears again after the wallet switches back to the matching network', async () => {
+    mockGetNetwork.mockResolvedValueOnce(OTHER_NETWORK);
+
+    renderButtonWithProbe();
+    await connectWallet();
+    expect(screen.getByText('Wrong network')).toBeInTheDocument();
+
+    mockGetNetwork.mockResolvedValueOnce({
+      network: 'TESTNET',
+      networkPassphrase: NETWORK_PASSPHRASE,
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('network-mismatch')).toHaveTextContent('false');
+    });
+    expect(screen.queryByText('Wrong network')).not.toBeInTheDocument();
+  });
+
+  it('is cleared on disconnect', async () => {
+    mockGetNetwork.mockResolvedValueOnce(OTHER_NETWORK);
+
+    renderButtonWithProbe();
+    const user = await connectWallet();
+    expect(screen.getByText('Wrong network')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /connected as/i }));
+
+    expect(await screen.findByRole('button', { name: /connect wallet/i })).toBeInTheDocument();
+    expect(screen.getByTestId('network-mismatch')).toHaveTextContent('false');
+    expect(screen.queryByText('Wrong network')).not.toBeInTheDocument();
   });
 });
 
