@@ -1,3 +1,7 @@
+/** 'system' means "follow prefers-color-scheme" — no stored override. */
+export type ThemePreference = 'light' | 'dark' | 'system';
+
+/** The two visual outcomes (what actually gets applied to <html>). */
 export type Theme = 'light' | 'dark';
 
 export const THEME_STORAGE_KEY = 'theme';
@@ -10,16 +14,25 @@ export const THEME_STORAGE_KEY = 'theme';
  *
  * Kept as a plain string (not a shared function) because it has to run as
  * a standalone <script> tag, before any of the app's JS has loaded.
+ *
+ * Behaviour:
+ *   stored === 'dark'  → add class 'dark'
+ *   stored === 'light' → add class 'light'
+ *   stored === null    → follow prefers-color-scheme (system mode); add
+ *                        whichever class matches but do NOT persist it, so
+ *                        a future OS-theme change will be respected.
  */
 export const THEME_INIT_SCRIPT = `(function(){try{var s=localStorage.getItem('${THEME_STORAGE_KEY}');var d=s?s==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;document.documentElement.classList.add(d?'dark':'light');}catch(e){}})();`;
 
-export function getStoredTheme(): Theme | null {
+/** Returns the stored explicit preference, or 'system' if none is set. */
+export function getStoredPreference(): ThemePreference {
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    return stored === 'dark' || stored === 'light' ? stored : null;
+    if (stored === 'dark' || stored === 'light') return stored;
   } catch {
-    return null;
+    // ignore — private browsing, quota, etc.
   }
+  return 'system';
 }
 
 export function getSystemTheme(): Theme {
@@ -27,18 +40,40 @@ export function getSystemTheme(): Theme {
 }
 
 /** Reads whichever theme is currently applied to <html> — set either by
- * THEME_INIT_SCRIPT before hydration, or by a previous call to this. */
+ * THEME_INIT_SCRIPT before hydration, or by a previous call to applyTheme. */
 export function getAppliedTheme(): Theme {
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 }
 
-export function applyTheme(theme: Theme): void {
-  document.documentElement.classList.toggle('dark', theme === 'dark');
-  document.documentElement.classList.toggle('light', theme === 'light');
+/**
+ * Applies a theme preference to <html> and persists it.
+ *
+ * - 'light' / 'dark': adds the matching class and saves to localStorage.
+ * - 'system': removes the stored key so future page loads follow the OS,
+ *   then immediately applies whichever class matches the current OS setting.
+ */
+export function applyThemePreference(preference: ThemePreference): void {
+  const resolved: Theme = preference === 'system' ? getSystemTheme() : preference;
+
+  document.documentElement.classList.toggle('dark', resolved === 'dark');
+  document.documentElement.classList.toggle('light', resolved === 'light');
+
   try {
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    if (preference === 'system') {
+      localStorage.removeItem(THEME_STORAGE_KEY);
+    } else {
+      localStorage.setItem(THEME_STORAGE_KEY, preference);
+    }
   } catch {
     // Storage can be unavailable (private browsing, quota) — the toggle
     // still works for the rest of the session, it just won't persist.
   }
+}
+
+// ---------------------------------------------------------------------------
+// Legacy alias — kept so callers that passed a Theme (not ThemePreference)
+// continue to compile without changes. Remove once all call-sites are updated.
+// ---------------------------------------------------------------------------
+export function applyTheme(theme: Theme): void {
+  applyThemePreference(theme);
 }
