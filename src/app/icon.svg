@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Teal circle background -->
+  <rect width="32" height="32" rx="8" fill="#0d9488"/>
+  <!-- Stylised streaming wave: three arcs suggesting flow/water + heart -->
+  <!-- Left arc -->
+  <path d="M6 20 Q9 12 13 16 Q17 20 21 12 Q25 4 26 8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Small heart dot at origin -->
+  <circle cx="6" cy="20" r="1.5" fill="white"/>
+</svg>

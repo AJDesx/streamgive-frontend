@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useToast } from '@/components/toast/ToastProvider';
 import { useWallet } from '@/components/wallet/WalletProvider';
 import { getStreams, type Stream } from '@/lib/api';
+import { describeContractError } from '@/lib/contractTypes';
 import { useDonationVaultClient } from '@/lib/donationVaultClient';
 import { describeAmountError, formatEstimatedFee, parseAmount, TOKEN_DECIMALS } from '@/lib/format';
 import { txToastAction } from '@/lib/stellar';
@@ -88,7 +89,7 @@ export function StreamControls({
       onOptimisticUpdate?.({ balance: (BigInt(stream.balance) + topUpAmountRaw).toString() });
       onChanged();
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Something went wrong.');
+      showToast('error', describeContractError(err));
     } finally {
       setPending(null);
       setEstimatedFee(null);
@@ -107,7 +108,7 @@ export function StreamControls({
       onOptimisticUpdate?.({ status: 'CANCELLED' });
       onChanged();
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Something went wrong.');
+      showToast('error', describeContractError(err));
     } finally {
       setPending(null);
       setEstimatedFee(null);
@@ -162,7 +163,7 @@ export function StreamControls({
       showToast('success', `Rate updated — ${INDEXING_LAG_NOTE}.`, txToastAction(sent, tx));
       onChanged();
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Something went wrong.');
+      showToast('error', describeContractError(err));
     } finally {
       setPending(null);
       setEstimatedFee(null);

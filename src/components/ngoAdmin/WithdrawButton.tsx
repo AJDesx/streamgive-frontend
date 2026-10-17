@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { useToast } from '@/components/toast/ToastProvider';
 import { useWallet } from '@/components/wallet/WalletProvider';
+import { describeContractError } from '@/lib/contractTypes';
 import { useDonationVaultClient } from '@/lib/donationVaultClient';
 import { formatAmount, formatEstimatedFee } from '@/lib/format';
 import { txToastAction } from '@/lib/stellar';
@@ -45,7 +46,7 @@ export function WithdrawButton({
       setAccrued(amount);
       setStep('confirming');
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Something went wrong.');
+      showToast('error', describeContractError(err));
       setStep('idle');
     }
   }
@@ -64,7 +65,7 @@ export function WithdrawButton({
       );
       onWithdrawn();
     } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Something went wrong.');
+      showToast('error', describeContractError(err));
     } finally {
       setStep('idle');
       setAccrued(null);
