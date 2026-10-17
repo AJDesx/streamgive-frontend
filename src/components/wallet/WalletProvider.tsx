@@ -102,6 +102,8 @@ function ensureKitInitialized(): void {
  *    the user closes the modal without picking a wallet or the modal
  *    throws — callers should surface that rejection themselves if they want
  *    user-facing error feedback, since `WalletProvider` does not.
+ *    A restored session also runs the network check, and while connected the
+ *    check is repeated each time the window regains focus.
  * 3. **Connected.** While `address` is set, `signTransaction` and
  *    `signMessage` are usable; both throw synchronously (as a rejected
  *    promise) if called with no address available.
@@ -127,11 +129,44 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     // Restores an already-authorized session on page load/refresh.
     // getAddress() throws when nothing's connected yet — that's the
     // expected, common case, not an error worth surfacing.
+    let cancelled = false;
     StellarWalletsKit.getAddress()
-      .then(({ address }) => setAddress(address))
+      .then(async ({ address }) => {
+        if (cancelled) return;
+        setAddress(address);
+        // connect() isn't involved on a restore, so the network has to be
+        // checked here or the "Wrong network" hint is lost on every reload.
+        const mismatch = await walletNetworkMismatch();
+        if (!cancelled) setNetworkMismatch(mismatch);
+      })
       .catch(() => {})
-      .finally(() => setConnecting(false));
+      .finally(() => {
+        if (!cancelled) setConnecting(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  // A wallet can switch network while this tab is in the background, with
+  // no event the kit exposes — so re-check whenever the window regains focus.
+  useEffect(() => {
+    if (!address) return;
+
+    let cancelled = false;
+    function handleFocus() {
+      void walletNetworkMismatch().then((mismatch) => {
+        if (!cancelled) setNetworkMismatch(mismatch);
+      });
+    }
+
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [address]);
 
   const connect = useCallback(async () => {
     ensureKitInitialized();

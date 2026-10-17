@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -96,6 +96,39 @@ describe('wallet connect flow', () => {
     await waitFor(() => {
       expect(screen.getByRole('button')).toHaveTextContent('GAAA…AAAA');
     });
+  });
+
+  it('flags a wrong network on a session restored on mount', async () => {
+    mockGetAddress.mockResolvedValue({ address: TEST_ADDRESS });
+    mockGetNetwork.mockResolvedValueOnce({
+      network: 'PUBLIC',
+      networkPassphrase: 'Public Global Stellar Network ; September 2015',
+    });
+
+    renderButton();
+
+    expect(await screen.findByText(/wrong network/i)).toBeInTheDocument();
+  });
+
+  it('re-checks the network when the window regains focus', async () => {
+    mockGetAddress.mockResolvedValue({ address: TEST_ADDRESS });
+
+    renderButton();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button')).toHaveTextContent('GAAA…AAAA');
+    });
+    expect(screen.queryByText(/wrong network/i)).not.toBeInTheDocument();
+
+    mockGetNetwork.mockResolvedValueOnce({
+      network: 'PUBLIC',
+      networkPassphrase: 'Public Global Stellar Network ; September 2015',
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    expect(await screen.findByText(/wrong network/i)).toBeInTheDocument();
   });
 
   it('shows the truncated address after connecting via the modal', async () => {
