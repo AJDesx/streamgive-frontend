@@ -22,6 +22,7 @@ import {
   getUsdcAssetAddress,
   txToastAction,
 } from '@/lib/stellar';
+import { describeContractError } from '@/lib/contractTypes';
 
 const DURATIONS = [
   { label: '1 week', seconds: 7 * 24 * 60 * 60 },
@@ -281,7 +282,7 @@ export function CreateStreamForm({
         router.push(`/ngos/${ngoId}/donate/success?streamId=${newStreamId}`);
       }
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Something went wrong.');
+      setErrorMessage(describeContractError(err));
       setSubmitState('error');
     } finally {
       setEstimatedFee(null);
