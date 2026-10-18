@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { describeAmountError, parseAmount, truncateAddress } from './format';
+import { describeAmountError, formatAmountInput, parseAmount, truncateAddress } from './format';
 import { formatAmount, formatTokenAmount, formatTokenTotals } from './format';
 import { formatEstimatedFee, formatRemainingDuration } from './format';
 import { getNativeAssetAddress, getUsdcAssetAddress } from './stellar';
@@ -311,3 +311,23 @@ describe('formatEstimatedFee', () => {
     expect(formatEstimatedFee('100')).toBe('≈ 0.00001 XLM');
   });
 });
+
+describe('formatAmountInput', () => {
+  it('formats whole amounts without decimals', () => {
+    expect(formatAmountInput(50000000000n)).toBe('5000');
+  });
+
+  it('formats fractional amounts without grouping commas', () => {
+    expect(formatAmountInput(49989000000n)).toBe('4998.9');
+  });
+
+  it('handles custom token decimals', () => {
+    expect(formatAmountInput(1050000n, 6)).toBe('1.05');
+  });
+
+  it('returns 0 for zero or negative values', () => {
+    expect(formatAmountInput(0n)).toBe('0');
+    expect(formatAmountInput(-500n)).toBe('0');
+  });
+});
+
