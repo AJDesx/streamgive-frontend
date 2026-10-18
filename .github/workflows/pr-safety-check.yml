@@ -136,8 +136,12 @@ jobs:
             for (const c of commits) {
               const short = c.sha.slice(0, 7);
               const subject = c.commit.message.split('\n')[0];
-              // GitHub creates these only when it merges a PR into the base branch; one inside a contributor's branch is a copy.
-              if (/^Merge pull request #\d+ from /.test(subject)) flag(`commit ${short}`, `looks like a copy of another PR's merge commit ("${subject}")`);
+              // GitHub signs the merge commits it creates. An unsigned "Merge pull request" commit is a copy made elsewhere.
+              if (/^Merge pull request #\d+ from /.test(subject)) {
+                const githubMade = c.commit.verification?.verified === true && c.commit.committer?.email === 'noreply@github.com';
+                if (githubMade) flag(`commit ${short}`, `merges a PR inside the contributor's fork ("${subject}")`, 'note');
+                else flag(`commit ${short}`, `looks like a copy of another PR's merge commit, not signed by GitHub ("${subject}")`);
+              }
               const login = c.author?.login;
               if (login && login.toLowerCase() !== prAuthor && c.author.type !== 'Bot') {
                 // A commit credited to a maintainer inside someone else's PR is how the earlier forgery looked trustworthy.
