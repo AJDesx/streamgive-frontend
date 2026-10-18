@@ -63,7 +63,7 @@ jobs:
             const CODE = /\.(js|jsx|mjs|cjs|ts|tsx|mts|cts|rs|sh|bash|py|rb|go|java|kt|swift|php|pl|ps1)$/i;
             const NO_LONG_LINE_CHECK = /\.(md|mdx|svg|lock|snap|json|csv|txt|map|min\.js|min\.css)$|(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|Cargo\.lock)$/i;
             // Zero-width, bidirectional-override and variation-selector characters can hide code from reviewers.
-            const HIDDEN = /[​-‏‪-‮⁠-⁤⁦-⁩﻿︀-️]|\uDB40[\uDD00-\uDDEF]/;
+            const HIDDEN = /[\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF\uFE00-\uFE0F]|\uDB40[\uDD00-\uDDEF]/;
             const SUSPICIOUS = [
               [/\beval\s*\(/, 'eval('],
               [/\bnew\s+Function\s*\(/, 'new Function('],
@@ -76,7 +76,7 @@ jobs:
             ];
             const LIFECYCLE = /"(preinstall|install|postinstall|prepare|prepublish|prepublishOnly|prepack|postpack)"\s*:/;
 
-            // ── Files ──
+            // -- Files --
             const files = await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: pr.number, per_page: 100 });
             if (pr.changed_files > files.length) flag('(PR)', `only ${files.length} of ${pr.changed_files} changed files could be inspected`);
 
@@ -117,7 +117,7 @@ jobs:
               }
             }
 
-            // ── Commits ──
+            // -- Commits --
             const commits = await github.paginate(github.rest.pulls.listCommits, { owner, repo, pull_number: pr.number, per_page: 100 });
             if (pr.commits > commits.length) flag('(commits)', `only ${commits.length} of ${pr.commits} commits could be inspected`);
             const prAuthor = pr.user.login.toLowerCase();
@@ -152,7 +152,7 @@ jobs:
               }
             }
 
-            // ── Report ──
+            // -- Report --
             const esc = (s) => String(s).replace(/[|`<>]/g, ch => ({ '|': '\\|', '`': "'", '<': '&lt;', '>': '&gt;' }[ch]));
             const table = (rows) => '| Where | Why |\n|---|---|\n' + rows.map(f => `| ${esc(f.where)} | ${esc(f.why)} |`).join('\n') + '\n\n';
             const blocking = findings.filter(f => f.level === 'block');
