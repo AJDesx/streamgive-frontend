@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useDonationVaultClient } from '@/lib/donationVaultClient';
+import { DONATION_VAULT_ERRORS } from '@/lib/contractTypes';
 
 import { WithdrawButton } from './WithdrawButton';
 
@@ -119,6 +120,7 @@ describe('WithdrawButton', () => {
     expect(showToast).toHaveBeenCalledWith(
       'success',
       expect.stringMatching(/withdrawal submitted/i),
+      undefined,
     );
     expect(onWithdrawn).toHaveBeenCalled();
   });
@@ -155,7 +157,9 @@ describe('WithdrawButton', () => {
   });
 
   it("shows the contract's error and does not call onWithdrawn on NothingToWithdraw", async () => {
-    withdraw.mockRejectedValueOnce(new Error('contract error: Error(Contract, #4)'));
+    withdraw.mockRejectedValueOnce(
+      new Error(`contract error: Error(Contract, #${DONATION_VAULT_ERRORS.NOTHING_TO_WITHDRAW})`),
+    );
     const onWithdrawn = vi.fn();
     const user = userEvent.setup();
 
@@ -163,7 +167,10 @@ describe('WithdrawButton', () => {
     await startWithdraw(user);
 
     expect(await screen.findByRole('button', { name: 'Withdraw' })).not.toBeDisabled();
-    expect(showToast).toHaveBeenCalledWith('error', 'contract error: Error(Contract, #4)');
+    expect(showToast).toHaveBeenCalledWith(
+      'error',
+      'Nothing to withdraw yet — funds accrue as the stream runs.',
+    );
     expect(signAndSend).not.toHaveBeenCalled();
     expect(onWithdrawn).not.toHaveBeenCalled();
   });

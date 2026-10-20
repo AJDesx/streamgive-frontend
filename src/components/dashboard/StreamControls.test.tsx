@@ -273,6 +273,7 @@ describe('StreamControls', () => {
       expect(showToast).toHaveBeenCalledWith(
         'success',
         expect.stringContaining('Stream topped up'),
+        undefined,
       );
     });
 
@@ -307,7 +308,9 @@ describe('StreamControls', () => {
       useDonationVaultClient.mockReturnValue({ client, ready: true });
       getStreams.mockResolvedValue([TINY_BALANCE_STREAM]);
       const user = userEvent.setup();
-      render(<StreamControls stream={TINY_BALANCE_STREAM} onChanged={vi.fn()} />);
+      // The preview allows submission, but the refreshed balance has
+      // drained below the minimum rate by the time Confirm is clicked.
+      render(<StreamControls stream={STREAM} onChanged={vi.fn()} />);
 
       await user.click(screen.getByRole('button', { name: 'Modify rate' }));
       await user.click(screen.getByRole('button', { name: 'Confirm' }));
@@ -380,7 +383,11 @@ describe('StreamControls', () => {
 
       expect(await screen.findByRole('button', { name: 'Modify rate' })).toBeEnabled();
       expect(onChanged).toHaveBeenCalledTimes(1);
-      expect(showToast).toHaveBeenCalledWith('success', expect.stringContaining('Rate updated'));
+      expect(showToast).toHaveBeenCalledWith(
+        'success',
+        expect.stringContaining('Rate updated'),
+        undefined,
+      );
     });
 
     // issue #201: Confirm had no `disabled` guard for a pending submission
@@ -448,6 +455,7 @@ describe('StreamControls', () => {
       expect(showToast).toHaveBeenCalledWith(
         'success',
         expect.stringContaining('Stream cancelled'),
+        undefined,
       );
     });
 

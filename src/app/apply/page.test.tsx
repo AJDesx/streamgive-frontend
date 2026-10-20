@@ -20,9 +20,12 @@ vi.mock('@/lib/api', async (importOriginal) => {
 });
 
 vi.mock('@/lib/ngoRegistryClient', () => ({
-  getNgoRegistryClient: vi.fn(async () => ({
-    register: vi.fn(async () => ({ signAndSend: vi.fn() })),
-  })),
+  useNgoRegistryClient: () => ({
+    client: {
+      register: vi.fn(async () => ({ signAndSend: vi.fn().mockResolvedValue(undefined) })),
+    },
+    ready: true,
+  }),
 }));
 
 import ApplyPage from './page';

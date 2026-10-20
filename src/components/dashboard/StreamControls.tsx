@@ -284,9 +284,13 @@ export function StreamControls({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex flex-wrap items-center justify-end gap-2"
+    >
       {!ready && (
-        <span role="status" className="text-xs text-gray-600 dark:text-gray-400">
+        <span className="text-xs text-gray-600 dark:text-gray-400">
           Preparing contract…
         </span>
       )}
