@@ -43,7 +43,7 @@ vi.mock('@/lib/api', () => ({ getStreams }));
 
 // signAndSend never settles, so the component stays in its in-flight state
 // long enough to assert on the button labels.
-const neverSettles = () => ({ signAndSend: () => new Promise(() => {}) });
+const neverSettles = () => ({ signAndSend: () => new Promise<void>(() => {}) });
 
 type ActionResult = () => Promise<{
   built?: { fee: string };

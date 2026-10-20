@@ -28,7 +28,6 @@ function LiveBalance({ stream }: { stream: Stream }) {
 
   useEffect(() => {
     if (stream.status !== 'ACTIVE') {
-      setEstimatedBalance(BigInt(stream.balance));
       return;
     }
 
@@ -46,6 +45,9 @@ function LiveBalance({ stream }: { stream: Stream }) {
       setEstimatedBalance(current);
     };
 
+    // Prime the clock subscription immediately instead of showing an old
+    // balance until the first interval fires after a stream update.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);

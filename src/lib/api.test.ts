@@ -105,7 +105,7 @@ describe('getNgo', () => {
   });
 
   it('URL-encodes the id in the request URL', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(jsonResponse(ngoProfile)));
+    const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(jsonResponse(ngoProfile)));
     vi.stubGlobal('fetch', fetchMock);
 
     await getNgo('ngo/with spaces');
@@ -162,7 +162,7 @@ describe('lookupNgoByAddress', () => {
   });
 
   it('passes the address as a query parameter', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(jsonResponse(ngoProfile)));
+    const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(jsonResponse(ngoProfile)));
     vi.stubGlobal('fetch', fetchMock);
 
     await lookupNgoByAddress('GABC123');
@@ -214,7 +214,7 @@ describe('getWithdrawals', () => {
   });
 
   it('URL-encodes the ngoId in the request URL', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(jsonResponse(withdrawals)));
+    const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(jsonResponse(withdrawals)));
     vi.stubGlobal('fetch', fetchMock);
 
     await getWithdrawals('ngo/with spaces');
@@ -329,7 +329,7 @@ describe('submitNgoApplication', () => {
   });
 
   it('sends the input as JSON in the request body', async () => {
-    const fetchMock = vi.fn(() => Promise.resolve(jsonResponse(createdApplication, 201)));
+    const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(jsonResponse(createdApplication, 201)));
     vi.stubGlobal('fetch', fetchMock);
 
     await submitNgoApplication(input);

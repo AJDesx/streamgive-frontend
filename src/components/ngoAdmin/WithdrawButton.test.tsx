@@ -26,7 +26,10 @@ vi.mock('@/components/toast/ToastProvider', () => ({
 }));
 
 const signAndSend = vi.fn();
-const withdraw = vi.fn(async () => ({ signAndSend }));
+const withdraw = vi.fn(async (): Promise<{
+  built?: { fee: string };
+  signAndSend: () => Promise<unknown>;
+}> => ({ signAndSend }));
 // 25_000_000 base units = 2.5 XLM accrued.
 const pendingAccrual = vi.fn(async () => ({ result: 25_000_000n }));
 
