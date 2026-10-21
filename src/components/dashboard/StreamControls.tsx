@@ -7,7 +7,7 @@ import { useWallet } from '@/components/wallet/WalletProvider';
 import { getStreams, type Stream } from '@/lib/api';
 import { describeContractError } from '@/lib/contractTypes';
 import { useDonationVaultClient } from '@/lib/donationVaultClient';
-import { describeAmountError, formatEstimatedFee, parseAmount, TOKEN_DECIMALS } from '@/lib/format';
+import { describeAmountError, formatEstimatedFee, formatRate, parseAmount } from '@/lib/format';
 import { txToastAction } from '@/lib/stellar';
 
 /**
@@ -272,7 +272,7 @@ export function StreamControls({
         </div>
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {previewRate !== null
-            ? `${(Number(previewRate) / 10 ** TOKEN_DECIMALS).toFixed(7)} per second, ending ${previewEndDate.toLocaleDateString()}.`
+            ? `${formatRate(previewRate)} per second, ending ${previewEndDate.toLocaleDateString()}.`
             : 'Remaining balance is too small to stream over this duration — try a shorter one.'}
         </p>
       </div>

@@ -12,6 +12,7 @@ import {
   formatAmount,
   formatAmountInput,
   formatEstimatedFee,
+  formatRate,
   parseAmount,
   TOKEN_DECIMALS,
 } from '@/lib/format';
@@ -491,7 +492,7 @@ export function CreateStreamForm({
       {isAmountValid && rateRaw !== null && (
         <p id={!isRateValid ? 'amount-error' : undefined} className="text-sm text-gray-500 dark:text-gray-400">
           {isRateValid
-            ? `That's roughly ${(Number(rateRaw) / 10 ** (tokenDecimals ?? TOKEN_DECIMALS)).toFixed(tokenDecimals ?? TOKEN_DECIMALS)} per second.`
+            ? `That's roughly ${formatRate(rateRaw, tokenDecimals ?? TOKEN_DECIMALS)} per second.`
             : 'That amount is too small to stream over this duration — try a shorter one.'}
         </p>
       )}
@@ -650,7 +651,7 @@ function ConfirmDonationSummary({
   }, [onCancel]);
 
   const perSecondRate =
-    rateRaw !== null ? `${(Number(rateRaw) / 10 ** decimals).toFixed(decimals)} / second` : '—';
+    rateRaw !== null ? `${formatRate(rateRaw, decimals)} / second` : '—';
 
   return (
     <div

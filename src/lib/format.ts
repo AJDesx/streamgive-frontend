@@ -54,6 +54,18 @@ export function formatAmount(raw: string, decimals: number = TOKEN_DECIMALS): st
   return isNegative ? `-${formatted}` : formatted;
 }
 
+/** Formats a raw per-second rate with exactly the token's decimal places,
+ * preserving i128 precision without converting the rate to Number. */
+export function formatRate(raw: bigint, decimals: number = TOKEN_DECIMALS): string {
+  const isNegative = raw < 0n;
+  const abs = isNegative ? -raw : raw;
+  const divisor = 10n ** BigInt(decimals);
+  const whole = abs / divisor;
+  const fraction = (abs % divisor).toString().padStart(decimals, '0');
+  const formatted = decimals === 0 ? whole.toString() : `${whole}.${fraction}`;
+  return isNegative ? `-${formatted}` : formatted;
+}
+
 /** Short display label for a token contract: "XLM" for the native asset,
  * "USDC" for the configured USDC contract, and a shortened contract address
  * for anything else (there is no symbol lookup for arbitrary tokens). */
