@@ -6,3 +6,10 @@
  * before hydration. Deployments do not need to set NEXT_PUBLIC_APP_URL.
  */
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3001';
+
+/**
+ * The wallet address allowed into /platform-admin. Not a secret — the
+ * backend independently enforces this on every admin request — just used
+ * here to decide whether the nav link is worth showing.
+ */
+export const PLATFORM_ADMIN_ADDRESS = process.env.NEXT_PUBLIC_ADMIN_ADDRESS ?? '';

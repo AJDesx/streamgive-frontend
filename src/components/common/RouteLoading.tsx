@@ -15,7 +15,7 @@ export function RouteLoading({ title }: { title?: string }) {
           {title ? (
             <h1 className="text-2xl font-bold">{title}</h1>
           ) : (
-            <div className="h-8 w-1/3 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
+            <div className="h-8 w-1/3 animate-pulse rounded bg-gray-200 motion-reduce:animate-none dark:bg-gray-800" />
           )}
         </div>
 
@@ -23,7 +23,7 @@ export function RouteLoading({ title }: { title?: string }) {
           {Array.from({ length: ROW_COUNT }, (_, i) => (
             <div
               key={i}
-              className="h-20 animate-pulse rounded-lg border border-gray-200 bg-gray-100 dark:border-gray-800 dark:bg-gray-900"
+              className="h-20 animate-pulse rounded-lg border border-gray-200 bg-gray-100 motion-reduce:animate-none dark:border-gray-800 dark:bg-gray-900"
             />
           ))}
         </div>

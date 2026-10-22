@@ -100,7 +100,7 @@ export default function ImpactPage() {
         )}
 
         {!loadError && !impact && (
-          <div role="status" className="mt-8 grid animate-pulse grid-cols-2 gap-6 sm:grid-cols-4">
+          <div role="status" className="mt-8 grid animate-pulse grid-cols-2 gap-6 motion-reduce:animate-none sm:grid-cols-4">
             {Array.from({ length: 4 }, (_, i) => (
               <div key={i}>
                 <div className="h-5 w-24 rounded bg-gray-200 dark:bg-gray-800" />
