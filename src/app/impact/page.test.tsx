@@ -165,7 +165,7 @@ describe('ImpactPage error recovery', () => {
 
     // First call failed and nothing was ever loaded: the page shows the
     // hard error state, not the numbers.
-    expect(screen.getByText(/Couldn't reach the StreamGive API/i)).toBeInTheDocument();
+    expect(screen.getByText(/Couldn't load platform stats/i)).toBeInTheDocument();
     expect(screen.queryByText('Total committed')).not.toBeInTheDocument();
     expect(load).toHaveBeenCalledTimes(1);
 
@@ -177,7 +177,7 @@ describe('ImpactPage error recovery', () => {
 
     // The page transitions from the error state to the data.
     expect(screen.getByText('Total committed')).toBeInTheDocument();
-    expect(screen.queryByText(/Couldn't reach the StreamGive API/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Couldn't load platform stats/i)).not.toBeInTheDocument();
     expect(screen.getByText('4')).toBeInTheDocument(); // Verified NGOs
     expect(load).toHaveBeenCalledTimes(2);
   });

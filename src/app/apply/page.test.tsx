@@ -45,7 +45,10 @@ describe('ApplyPage', () => {
     render(<ApplyPage />);
 
     await user.type(screen.getByLabelText('Organization name'), 'Community Garden');
-    await user.type(screen.getByLabelText('Description'), 'A local community garden.');
+    await user.type(
+      screen.getByRole('textbox', { name: /^Description/ }),
+      'A local community garden.',
+    );
     await user.type(screen.getByLabelText('Contact email'), 'garden@example.org');
     await user.click(screen.getByRole('button', { name: 'Submit application' }));
 
