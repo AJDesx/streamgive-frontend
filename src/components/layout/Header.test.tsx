@@ -4,6 +4,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Header } from './Header';
 
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/ngos',
+}));
+
 vi.mock('@/components/wallet/WalletProvider', () => ({
   useWallet: () => ({
     address: null,

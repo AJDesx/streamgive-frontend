@@ -60,7 +60,7 @@ describe('NgosPage', () => {
     expect(screen.getByText('NGO ngo-1')).toBeInTheDocument();
     expect(screen.getByText('NGO ngo-3')).toBeInTheDocument();
     expect(screen.queryByText('NGO ngo-2')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Couldn't reach the StreamGive API/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Couldn't load the NGO list/)).not.toBeInTheDocument();
   });
 
   it('shows the error state when the NGO list itself cannot be fetched', async () => {
@@ -68,6 +68,6 @@ describe('NgosPage', () => {
 
     render(await NgosPage());
 
-    expect(screen.getByText(/Couldn't reach the StreamGive API/)).toBeInTheDocument();
+    expect(screen.getByText(/Couldn't load the NGO list/)).toBeInTheDocument();
   });
 });

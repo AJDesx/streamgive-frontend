@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import type { NgoProfile } from '@/lib/api';
 import { formatAmount } from '@/lib/format';
@@ -41,12 +41,15 @@ export function NgoExplorer({ ngos }: { ngos: NgoProfile[] }) {
   const [page, setPage] = useState(() => parsePage(searchParams.get('page')));
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
-  // Keeps state in sync with the URL for cases that don't go through the
-  // handlers below — landing on a shared link, or the back/forward button.
-  useEffect(() => {
+  // Sync incoming URL changes before rendering, while keeping immediate
+  // local updates from the handlers below until navigation completes.
+  const queryString = searchParams.toString();
+  const [previousQueryString, setPreviousQueryString] = useState(queryString);
+  if (queryString !== previousQueryString) {
+    setPreviousQueryString(queryString);
     setSearchQuery(searchParams.get('q') ?? '');
     setPage(parsePage(searchParams.get('page')));
-  }, [searchParams]);
+  }
 
   const visibleCount = page * PAGE_SIZE;
 

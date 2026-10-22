@@ -66,6 +66,7 @@ export function StreamControls({
   const [mode, setMode] = useState<Mode>('idle');
   const [pending, setPending] = useState<PendingAction>(null);
   const [durationSeconds, setDurationSeconds] = useState(DURATIONS[1].seconds);
+  const [modifyStartedAt, setModifyStartedAt] = useState(0);
   const [topUpAmount, setTopUpAmount] = useState('');
   const [estimatedFee, setEstimatedFee] = useState<string | null>(null);
 
@@ -237,14 +238,17 @@ export function StreamControls({
 
   if (mode === 'modifying') {
     const previewRate = computeModifyRate(stream.balance, durationSeconds);
-    const previewEndDate = new Date(Date.now() + durationSeconds * 1000);
+    const previewEndDate = new Date(modifyStartedAt + durationSeconds * 1000);
 
     return (
       <div className="flex flex-col items-end gap-1">
         <div className="flex items-center gap-2">
           <select
             value={durationSeconds}
-            onChange={(event) => setDurationSeconds(Number(event.target.value))}
+            onChange={(event) => {
+              setDurationSeconds(Number(event.target.value));
+              setModifyStartedAt(Date.now());
+            }}
             aria-label="New duration to stream the remaining balance over"
             className="rounded-md border border-gray-300 px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 dark:border-gray-700 dark:bg-gray-900 dark:focus-visible:ring-teal-400"
           >
@@ -280,9 +284,13 @@ export function StreamControls({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex flex-wrap items-center justify-end gap-2"
+    >
       {!ready && (
-        <span role="status" className="text-xs text-gray-600 dark:text-gray-400">
+        <span className="text-xs text-gray-600 dark:text-gray-400">
           Preparing contract…
         </span>
       )}
@@ -299,7 +307,10 @@ export function StreamControls({
       </button>
       <button
         type="button"
-        onClick={() => setMode('modifying')}
+        onClick={() => {
+          setModifyStartedAt(Date.now());
+          setMode('modifying');
+        }}
         disabled={pending !== null || !ready}
         className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 disabled:opacity-50 dark:focus-visible:ring-teal-400"
       >

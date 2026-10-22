@@ -84,6 +84,7 @@ describe('DashboardPage', () => {
       disconnect: vi.fn(),
       signTransaction: vi.fn(),
       signMessage: vi.fn(),
+      networkMismatch: false,
     });
 
     let resolveFetch: (streams: Stream[]) => void = () => {};
@@ -113,6 +114,7 @@ describe('DashboardPage', () => {
       disconnect: vi.fn(),
       signTransaction: vi.fn(),
       signMessage: vi.fn(),
+      networkMismatch: false,
     });
 
     render(<DashboardPage />);
@@ -129,6 +131,7 @@ describe('DashboardPage', () => {
       disconnect: vi.fn(),
       signTransaction: vi.fn(),
       signMessage: vi.fn(),
+      networkMismatch: false,
     });
     const wallet = vi.spyOn(WalletProviderMod, 'useWallet');
     wallet.mockReturnValue(walletFor('GOLD'));
@@ -293,6 +296,7 @@ describe('DashboardPage', () => {
         disconnect: vi.fn(),
         signTransaction: vi.fn(),
         signMessage: vi.fn(),
+        networkMismatch: false,
       });
       vi.spyOn(ApiMod, 'getStreams').mockResolvedValue(streams);
       render(<DashboardPage />);
@@ -384,6 +388,7 @@ describe('DashboardPage', () => {
         disconnect: vi.fn(),
         signTransaction: vi.fn(),
         signMessage: vi.fn(),
+        networkMismatch: false,
       });
       vi.spyOn(ApiMod, 'getStreams').mockResolvedValue(streams);
       vi.mocked(CsvMod.buildDonationHistoryCsv).mockReturnValue('id,status\n101,ACTIVE');
@@ -393,11 +398,11 @@ describe('DashboardPage', () => {
       URL.createObjectURL = createObjectURL;
       URL.revokeObjectURL = revokeObjectURL;
 
-      let downloaded: HTMLAnchorElement | null = null;
+      const downloaded: HTMLAnchorElement[] = [];
       vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
         this: HTMLAnchorElement,
       ) {
-        downloaded = this;
+        downloaded.push(this);
       });
 
       const user = userEvent.setup();
@@ -413,9 +418,9 @@ describe('DashboardPage', () => {
       expect(blob.type).toBe('text/csv;charset=utf-8;');
       expect(blob.size).toBe('id,status\n101,ACTIVE'.length);
 
-      expect(downloaded).not.toBeNull();
-      expect((downloaded as unknown as HTMLAnchorElement).download).toBe('streamgive-donations.csv');
-      expect((downloaded as unknown as HTMLAnchorElement).href).toBe('blob:streamgive-csv');
+      expect(downloaded).toHaveLength(1);
+      expect(downloaded[0].download).toBe('streamgive-donations.csv');
+      expect(downloaded[0].href).toBe('blob:streamgive-csv');
       expect(revokeObjectURL).toHaveBeenCalledWith('blob:streamgive-csv');
     });
   });
@@ -524,6 +529,7 @@ describe('DashboardPage', () => {
         disconnect: vi.fn(),
         signTransaction: vi.fn(),
         signMessage: vi.fn(),
+        networkMismatch: false,
       });
       vi.spyOn(ApiMod, 'getStreams').mockResolvedValue([streamOldest, streamMiddle, streamNewest]);
     }

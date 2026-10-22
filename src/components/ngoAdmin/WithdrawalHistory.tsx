@@ -25,7 +25,11 @@ export function WithdrawalHistory({ ngoId }: { ngoId: string }) {
     let cancelled = false;
     const controller = new AbortController();
 
+    // Reset the request status when the NGO changes or a retry starts,
+    // before the asynchronous result arrives.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadError(false);
     getWithdrawals(ngoId, controller.signal)
       .then((data) => {

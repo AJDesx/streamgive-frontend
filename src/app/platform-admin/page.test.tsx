@@ -239,17 +239,17 @@ describe('PlatformAdminPage', () => {
       expect(listNgoApplications).toHaveBeenLastCalledWith(ADMIN_ADDRESS, signMessage, 'PENDING');
 
       // Click Approved tab
-      await user.click(screen.getByRole('button', { name: 'Approved' }));
+      await user.click(screen.getByRole('tab', { name: 'Approved' }));
       expect(await screen.findByText('Approved NGO')).toBeInTheDocument();
       expect(listNgoApplications).toHaveBeenLastCalledWith(ADMIN_ADDRESS, signMessage, 'APPROVED');
 
       // Click Rejected tab
-      await user.click(screen.getByRole('button', { name: 'Rejected' }));
+      await user.click(screen.getByRole('tab', { name: 'Rejected' }));
       expect(await screen.findByText('Rejected NGO')).toBeInTheDocument();
       expect(listNgoApplications).toHaveBeenLastCalledWith(ADMIN_ADDRESS, signMessage, 'REJECTED');
 
       // Click Pending tab again
-      await user.click(screen.getByRole('button', { name: 'Pending' }));
+      await user.click(screen.getByRole('tab', { name: 'Pending' }));
       expect(await screen.findByText('Test NGO')).toBeInTheDocument();
       expect(listNgoApplications).toHaveBeenLastCalledWith(ADMIN_ADDRESS, signMessage, 'PENDING');
     });

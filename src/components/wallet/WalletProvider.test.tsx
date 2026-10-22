@@ -100,6 +100,10 @@ describe('wallet connect flow', () => {
   beforeEach(() => {
     mockGetAddress.mockReset();
     mockAuthModal.mockReset();
+    mockGetNetwork.mockReset().mockResolvedValue({
+      network: 'TESTNET',
+      networkPassphrase: NETWORK_PASSPHRASE,
+    });
   });
 
   it('shows "Connect Wallet" when no session is restored', async () => {
@@ -137,11 +141,16 @@ describe('wallet connect flow', () => {
   it('re-checks the network when the window regains focus', async () => {
     mockGetAddress.mockResolvedValue({ address: TEST_ADDRESS });
 
-    renderButton();
+    // Finish session restoration and install the focus listener before
+    // simulating a return to the tab.
+    await act(async () => {
+      renderButton();
+    });
 
     await waitFor(() => {
       expect(screen.getByRole('button')).toHaveTextContent('GAAA…AAAA');
     });
+    expect(mockGetNetwork).toHaveBeenCalledTimes(1);
     expect(screen.queryByText(/wrong network/i)).not.toBeInTheDocument();
 
     mockGetNetwork.mockResolvedValueOnce({
@@ -153,6 +162,7 @@ describe('wallet connect flow', () => {
     });
 
     expect(await screen.findByText(/wrong network/i)).toBeInTheDocument();
+    expect(mockGetNetwork).toHaveBeenCalledTimes(2);
   });
 
   it('shows the truncated address after connecting via the modal', async () => {
@@ -350,7 +360,9 @@ describe('signMessage (SEP-53)', () => {
     await waitFor(() => expect(mockGetAddress).toHaveBeenCalled());
     await user.click(screen.getByRole('button', { name: 'Sign' }));
 
-    expect(await screen.findByRole('button', { name: /error: no wallet connected/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: /error: no wallet connected/i }),
+    ).toBeInTheDocument();
     expect(mockSignMessage).not.toHaveBeenCalled();
   });
 });
