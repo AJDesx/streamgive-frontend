@@ -23,6 +23,10 @@ arguments behind it, and
 [docs/THEMING.md](./docs/THEMING.md) for the Tailwind v4 theme tokens and
 the dark-mode strategy.
 
+See [docs/DATA_FETCHING.md](./docs/DATA_FETCHING.md) for server/client data
+loading, cache revalidation, polling intervals, and the known 1+N impact
+fetch pattern.
+
 ## Local development
 
 ```
