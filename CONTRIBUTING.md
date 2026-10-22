@@ -8,7 +8,7 @@ decisions) see the
 ## Local setup
 
 ```bash
-cp .env.example .env.local   # fill in any blank vars — see ENVIRONMENT.md
+cp .env.example .env          # fill in any blank vars — see ENVIRONMENT.md
 npm install
 npm run dev                  # starts on http://localhost:3001
 ```
@@ -60,7 +60,10 @@ npm run format      # Prettier check
 npm run typecheck   # tsc --noEmit
 ```
 
-All three run in CI — fix any errors before opening a PR.
+Run all three locally and fix any errors before opening a PR. CI runs lint
+and typecheck, plus `npm test`, `npm run build`, and the navigation-only
+Playwright spec `e2e/donor-flow.spec.ts`. The Prettier check (`npm run format`)
+is a local contributor check; it does not currently run in CI.
 
 ## Accessibility checklist
 
